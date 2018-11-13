@@ -1,0 +1,12 @@
+[Unit]
+Description=Python Raspberry IO Control
+
+[Service]
+Type=oneshot
+ExecStart=<path to your installation>/app.sh start
+ExecStop=<path to your installation>/app.sh stop
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+

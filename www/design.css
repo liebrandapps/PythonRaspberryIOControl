@@ -1,0 +1,390 @@
+.block {
+    display: block;
+    width: 100%;
+    border: none;
+    background-color: #4CAF50;
+    padding: 14px 28px;
+    font-size: 16px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.toggle label {
+	position: relative;
+	display: inline-block;
+	padding-top: 0.25em;
+	padding-left: 6em;
+	width: 20em;
+	height: 3.5em;
+	font-family: Trebuchet MS;
+	font-size: 1.5vh;
+}
+
+.toggle input {
+	display: none;
+}
+
+.toggle .slider {
+
+
+	position: absolute;
+	cursor: pointer;
+	top: 0em;
+	left: 0.5em;
+	width: 4em;
+	height: 2em;
+	background-color: #c32e04;
+	/* red */
+
+	transition: all .3s ease-in-out;
+	border-radius: 1em;
+}
+
+.toggle .slider:before {
+
+	position: absolute;
+	content: "";
+	height: 1.6em;
+	width: 1.6em;
+	left: 0.2em;
+	bottom: 0.2em;
+	background-color: white;
+	border-radius: 50%;
+	transition: all .3s ease-in-out;
+}
+
+.toggle input:checked + .slider {
+	background-color: #5a9900;
+	/* green */
+}
+
+.toggle input:focus + .slider {
+	background-color: pink;
+	box-shadow: 0 0 1px #5a9900;
+}
+
+.toggle input:checked + .slider:before {
+	-webkit-transform: translateX(1.9em);
+	/* Android 4 */
+
+	-ms-transform: translateX(1.9em);
+	/* IE9 */
+
+	transform: translateX(1.9em);
+}
+
+
+
+.switch {
+    float: left;
+  position: relative;
+  display: inline-block;
+    top: 12px;
+
+  width: 60px;
+  height: 34px;
+}
+
+/* Hide default HTML checkbox */
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The slider */
+.sliderV2 {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #c32e04;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+.sliderV2:before {
+  position: absolute;
+  content: "";
+  height: 26px;
+  width: 26px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+input:checked + .sliderV2 {
+  background-color: #5a9900;
+}
+
+input:focus + .sliderV2 {
+  box-shadow: 0 0 1px #5a9900;
+}
+
+input:checked + .sliderV2:before {
+  -webkit-transform: translateX(26px);
+  -ms-transform: translateX(26px);
+  transform: translateX(26px);
+}
+
+
+.plainlabel {
+    font-family: Trebuchet MS;
+	font-size: 1.5vh;
+	display: inline-block;
+	width : 40vw;
+ }
+
+.btn {
+    border: none;
+    background-color: inherit;
+    padding: 4px 8px;
+    font-size: 16px;
+    cursor: pointer;
+    display: inline-block;
+}
+
+hr {
+    display: block;
+    height: 1px;
+    border: 0;
+    border-top: 1px solid #ccc;
+    margin: 1em 0;
+    padding: 0;
+}
+
+h1 {
+    font-family: Trebuchet MS;
+}
+
+/* The side navigation menu */
+.sidenav {
+    height: 100%; /* 100% Full-height */
+    width: 0; /* 0 width - change this with JavaScript */
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Stay on top */
+    top: 0; /* Stay at the top */
+    left: 0;
+    background-color: #606060; /* Black*/
+    overflow-x: hidden; /* Disable horizontal scroll */
+    padding-top: 60px; /* Place content 60px from the top */
+    transition: 0.5s; /* 0.5 second transition effect to slide in the sidenav */
+}
+
+/* The navigation menu links */
+.sidenav a {
+    padding: 8px 8px 8px 32px;
+    text-decoration: none;
+    font-size: 25px;
+    font-family: "Trebuchet MS";
+    color: #cfcfcf;
+    display: block;
+    transition: 0.3s;
+}
+
+/* When you mouse over the navigation links, change their color */
+.sidenav a:hover {
+    background-color: #a690d6;
+}
+
+/* Position and style the close button (top right corner) */
+.sidenav .closebtn {
+    position: absolute;
+    top: 0;
+    right: 5px;
+    font-size: 36px;
+    margin-left: 5px;
+}
+
+/* Style page content - use this if you want to push the page content to the right when you open the side navigation */
+#main {
+    transition: margin-left .5s;
+    padding: 20px;
+}
+
+/* On smaller screens, where height is less than 450px, change the style of the sidenav (less padding and a smaller font size) */
+@media screen and (max-height: 450px) {
+    .sidenav {padding-top: 15px;}
+    .sidenav a {font-size: 18px;}
+}
+
+/* Add a black background color to the top navigation */
+.topnav {
+    background-color: #606060;
+    overflow: hidden;
+
+}
+
+.topnav img:hover {
+    background-color: #a690d6;
+
+}
+
+.topnav img {
+    padding: 14px 16px;
+}
+
+/* Style the links inside the navigation bar */
+.topnav a {
+    float: left;
+    font-size: 25px;
+    font-family: Trebuchet MS;
+    color: #cfcfcf;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+}
+
+/* Change the color of links on hover */
+.topnav a:hover {
+    background-color: #a690d6;
+
+}
+
+/* Add a color to the active/current link */
+.topnav a.active {
+    background-color: #4CAF50;
+    color: white;
+}
+
+/* Popup container */
+.popup {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+}
+
+/* The actual popup (appears on top) */
+.popup .popuptext {
+    visibility: hidden;
+    width: 320px;
+    background-color: #352eff;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px 0;
+    position: absolute;
+    z-index: 1;
+    top: 125%;
+    left: 50%;
+    margin-left: 0px;
+    font-family: Trebuchet MS;
+}
+
+/* Popup arrow */
+.popup .popuptext::after {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 15%;
+    margin-left: -5px;
+    border-width: 10px;
+    border-style: solid;
+    border-color: transparent transparent #352eff   transparent;
+}
+
+/* Toggle this class when clicking on the popup container (hide and show the popup) */
+.popup .show {
+    visibility: visible;
+    -webkit-animation: fadeIn 1s;
+    animation: fadeIn 1s
+}
+
+/* Add animation (fade in the popup) */
+@-webkit-keyframes fadeIn {
+    from {opacity: 0;}
+    to {opacity: 1;}
+}
+
+@keyframes fadeIn {
+    from {opacity: 0;}
+    to {opacity:1 ;}
+}
+
+.header img {
+  float: left;
+  width: 75px;
+  height: 75px;
+}
+
+.header h1 {
+  position: relative;
+  top: 18px;
+  left: 10px;
+}
+
+
+.container {
+  padding: 0px;
+}
+
+
+/* Clear floats */
+.row:after {
+  content: "";
+  display: table;
+  clear: both
+}
+
+
+.column-50l, .column-50r {
+  float: left;
+  width: 50%;
+  padding: 5px 20px 5px 5px;
+  box-sizing: border-box;
+}
+
+.column-50l a, .column-50r a {
+    font-family: Trebuchet MS;
+	font-size: 1.5vh;
+	display: inline-block;
+}
+
+/* Add responsiveness - make the columns appear on top of each other instead of next to each other on small screens */
+@media screen and (max-width: 1000px) {
+  .column-50l,
+  .column-50r {
+    width: 100%;
+  }
+}
+
+#history {
+    font-family: "Trebuchet MS";
+    border-collapse: collapse;
+    width: 100%;
+}
+
+#history th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    text-align: left;
+    background-color: #606060;
+    color: #cfcfcf;
+}
+
+#history td, #history th {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+.onoffs a {
+    display: inline-block;
+    font-family: "Trebuchet MS";
+    font-size: 25px;
+    padding: 0px 0px 5px 25px;
+}
+
+.onoffs .switch {
+    top : 0px;
+}
+
+video {
+width: 100%;
+    height: auto;
+    max-height: 100%;
+}
+

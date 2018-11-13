@@ -1,0 +1,355 @@
+<html xmlns="http://www.w3.org/1999/html">
+<head>
+	<meta charset="UTF-8">
+    <title>##TITLE##</title>
+    <link rel="apple-touch-icon" sizes="57x57" href="/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192"  href="/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
+    <meta name="theme-color" content="#ffffff">
+    <link href="/design.css" rel="stylesheet">
+	<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+	<script type="text/javascript" src="https://www.gstatic.com/firebasejs/5.5.2/firebase-app.js"></script>
+	<script type="text/javascript" src="https://www.gstatic.com/firebasejs/5.5.2/firebase-messaging.js"></script>
+    <script src="/code.js"></script>
+</head>
+<body style="background-color:#d6d6d6;">
+<div class="topnav">
+	<span style="float:left;">
+		<a id="txt_10" href="#" onclick="openNav();">Menu</a>
+		<img src="/refresh.png" height="25px" width="25px" onclick="handleRefresh();">
+	</span>
+    <span style="float:right;">
+		<a id="txt_27">Updates</a>
+		<label class="switch">
+  			<input name="sensorUpdate" id="fcm_1_check" onclick="handleFCM(this);" type="checkbox">
+			<span class="sliderV2"></span>
+		</label>
+		<a id="txt_30">Offline</a>
+		<label class="switch">
+  			<input name="outboundMsg" id="fcm_2_check" onclick="handleFCM(this);" type="checkbox">
+			<span class="sliderV2"></span>
+		</label>
+		<!--div id="fcm_2" class="toggle" style="display:inline-block;">
+			<label id="fcm_2_label">Receive Updates
+			<input type="checkbox" name="sensorUpdate" id="fcm_2_check" onclick="handleFCM(this);"> <span class="slider"></span> </label>
+		</div-->
+        <a href="#" onclick="setLanguage('de');">DE</a>
+        <a href="#" onclick="setLanguage('pl');">PL</a>
+        <a href="#" onclick="setLanguage('en');">EN</a>
+    </span>
+</div>
+<div id="mySidenav" class="sidenav">
+    <a href="#" class="closebtn" onclick="closeNav()">&times;</a>
+    <a id="txt_1" style="text-align:left;" href="#" onclick="showArea('switch');">Switches<span style="float:right;">[Relay]</span></a>
+    <a id="txt_2" style="text-align:left;" href="#" onclick="showArea('fs20');">Switches<span style="float:right;">[FS20]</span></a>
+	<a id="txt_16" style="text-align:left;" href="#" onclick="showArea('netio');">Switches<span style="float:right;">[NetIO230]</span></a>
+    <a id="txt_4" style="text-align:left;" href="#" onclick="showArea('ultrasonic');">Distance<span style="float:right;">[Ultrasonic]</span></a>
+    <a id="txt_6" style="text-align:left;" href="#" onclick="showArea('temperature');">Temperature<span style="float:right;">[DS18B20]</span></a>
+    <a id="txt_17" style="text-align:left;" href="#" onclick="showArea('hms100t');">Temperature<span style="float:right;">[HMS100T]</span></a>
+    <a id="txt_18" style="text-align:left;" href="#" onclick="showArea('hms100tf');">Temperature<span style="float:right;">[HMS100TF]</span></a>
+    <a id="txt_19" style="text-align:left;" href="#" onclick="showArea('ksh300');">Temperature<span style="float:right;">[KSH300]</span></a>
+    <a id="txt_20" style="text-align:left;" href="#" onclick="showArea('fs20Sensor');">Sensors<span style="float:right;">[FS20]</span></a>
+	<a id="txt_26" style="text-align:left;" href="#" onclick="showArea('camera');">Cameras<span style="float:right;">[ONVIF]</a>
+	<a id="txt_28" style="text-align:left;" href="#" onclick="showArea('rpicam');">Cameras<span style="float:right;">[RPI]</a>
+    <a id="txt_8" href="#" onclick="showArea('peer');">Peers</a>
+    <a id="txt_9" href="#" onclick="showArea('about');">About</a>
+</div>
+<div id="startHere" class="popup">
+	<span class="popuptext" id="myPopup">Click Menu to access Switches and Sensors</span>
+</div>
+<div id="progress" style="display:none">
+	<h1>Loading Data from Server ...</h1>
+</div>
+<div id="about" style="display:none;">
+	<div class="header">
+  		<img src="prc.png" alt="logo" />
+	  	<h1>Python Raspberry IO Control</h1>
+	</div>
+	<br>
+	<hr/>
+	<div class="container">
+  		<div class="row">
+    		<div class="column-50l">
+				<span><a>Server process PID:</a><a style="float:right;" id="serverPID"></a></span>
+				<br>
+				<span><a>Uptime:</a><a style="float:right;" id="serverUptime"></a></span>
+				<br>
+				<span><a>Relay Board Switches</a><a style="float:right;" id="switchCount"></a></span>
+				<br>
+				<span><a>FS20 Actors</a><a style="float:right;" id="fs20Count"></a></span>
+				<br>
+				<span><a>NetIO230 Actors</a><a style="float:right;" id="netioCount"></a></span>
+				<br>
+				<span><a>Ultrasonic</a><a style="float:right;" id="ultrasonicCount"></a></span>
+				<br>
+				<span><a>Temperature (DS18B20)</a><a style="float:right;" id="temperatureCount"></a></span>
+				<br/>
+				<span><a>Temperature (HMS100T)</a><a style="float:right;" id="hms100tCount"></a></span>
+				<br/>
+				<span><a>Temperature / Humidity (HMS100TF)</a><a style="float:right;" id="hms100tfCount"></a></span>
+				<br/>
+				<span><a>Temperature /Humidity (KSH300)</a><a style="float:right;" id="ksh300Count"></a></span>
+				<br/>
+				<span><a>FS20 Sensors</a><a style="float:right;" id="fs20SensorCount"></a></span>
+				<br/>
+				<span><a>ONVIF Cameras</a><a style="float:right;" id="cameraCount"></a></span>
+				<br/>
+				<span><a>RPI Cameras</a><a style="float:right;" id="rpicamCount"></a></span>
+				<br/>
+				<span><a>Connected Servers</a><a style="float:right;" id="serverCount"></a></span>
+				<br/>
+				<span><a>Last update received:</a><a style="float:right;" id="lastUpdateTime">never</a></span>
+    		</div>
+    		<div class="column-50r">
+				<table id="history">
+					<col width="23%">
+					<col width="12%">
+					<col width="12%">
+					<col width="47%">
+					<col width="6%">
+					<tr>
+						<th>Time</th>
+						<th>Type</th>
+						<th>ServerId</th>
+						<th>Message</th>
+						<th></th>
+					</tr>
+				</table>
+    		</div>
+  		</div>
+	</div>
+
+	<hr/>
+	<p style="font-family:Trebuchet MS">&copy Mark Liebrand 2018<span style="float:right;"><a href="https://www.liebrand.io">liebrand.io</a></span></p>
+</div>
+<div id="peer" style="display:none;">
+	<div id="peer_1"><button id="peer_1_btn" class="btn"></button></div>
+    <div id="peer_2"><button id="peer_2_btn" class="btn"></button></div>
+    <div id="peer_3"><button id="peer_3_btn" class="btn"></button></div>
+</div>
+<div id="switch" class="onoffs" style="display:none;">
+<h1 id="txt_11">Relay Board Switches</h1><br>
+	<hr/>
+	<div class="container">
+  		<div class="row">
+    		<div id="switch_container_left" class="column-50l">
+			</div>
+    		<div id="switch_container_right" class="column-50r">
+			</div>
+		</div>
+	</div>
+	<hr/>
+</div>
+<div id="fs20" class="onoffs" style="display:none;">
+<h1 id="txt_12">FS20 Actors</h1>
+	<hr/>
+	<div class="container">
+  		<div class="row">
+    		<div id="fs20_container_left" class="column-50l">
+			</div>
+    		<div id="fs20_container_right" class="column-50r">
+			</div>
+		</div>
+	</div>
+	<hr/>
+</div>
+<div id="netio" class="onoffs" style="display:none;">
+<h1 id="txt_15">NetIO230 Power Strip</h1>
+	<hr/>
+	<div class="container">
+  		<div class="row">
+    		<div id="netio_container_left" class="column-50l">
+			</div>
+    		<div id="netio_container_right" class="column-50r">
+			</div>
+		</div>
+	</div>
+	<hr/>
+</div>
+<div id="ultrasonic" style="display:none;">
+<h1 id="txt_13">Ultrasonic</h1>
+	<div id="ultrasonic_1" style="display:none;">
+		<meter id="ultrasonic_1_meter" min="0" max="10" value="5"></meter>
+		<label id="ultrasonic_1_label" class="plainlabel">US</label>
+		<img src="history24.png" width="30px" height="15px" onclick="requestHistory('ultrasonic_1');"/>
+		<div id="ultrasonic_1_chartcanvas" style="display:none;">
+			<hr/>
+			<div id="ultrasonic_1_chart" style="width: 900px; height: 500px" ></div>
+			<button type="button" onclick="hideChartCanvas('ultrasonic_1_chartcanvas')";>Done</button>
+			<hr/>
+		</div>
+	</div>
+	<div id="ultrasonic_2" style="display:none;">
+		<meter id="ultrasonic_2_meter" min="0" max="10" value="5"></meter>
+		<label id="ultrasonic_2_label" class="plainlabel">US</label>
+		<img src="history24.png" width="30px" height="15px" onclick="requestHistory('ultrasonic_2');"/>
+		<div id="ultrasonic_2_chartcanvas" style="display:none;">
+			<hr/>
+			<div id="ultrasonic_2_chart" style="width: 900px; height: 500px" ></div>
+			<button type="button" onclick="hideChartCanvas('ultrasonic_2_chartcanvas')";>Done</button>
+			<hr/>
+		</div>
+	</div>
+	<div id="ultrasonic_3" style="display:none;">
+		<meter id="ultrasonic_3_meter" min="0" max="10" value="5"></meter>
+		<label id="ultrasonic_3_label" class="plainlabel">US</label>
+		<img src="history24.png" width="30px" height="15px" onclick="requestHistory('ultrasonic_3');"/>
+		<div id="ultrasonic_3_chartcanvas" style="display:none;">
+			<hr/>
+			<div id="ultrasonic_3_chart" style="width: 900px; height: 500px" ></div>
+			<button type="button" onclick="hideChartCanvas('ultrasonic_3_chartcanvas')";>Done</button>
+			<hr/>
+		</div>
+	</div>
+    </div>
+<div id="temperature" style="display:none;">
+<h1 id="txt_14">Temperatures</h1>
+	<hr/>
+	<div class="container">
+  		<div class="row">
+    		<div id="temperature_container_left" class="column-50l">
+			</div>
+    		<div id="temperature_container_right" class="column-50r">
+			</div>
+		</div>
+	</div>
+	<hr/>
+
+</div>
+<div id="hms100t" style="display:none;">
+<h1 id="txt_21">HMS100T Temperature Sensor</h1>
+	<div id="hms100t_container">
+
+	</div>
+</div>
+<div id="hms100tf" style="display:none;">
+<h1 id="txt_22">HMS100TF Temperature / Humidity Sensor</h1>
+	<div id="hms100tf_container">
+
+	</div>
+ </div>
+<div id="ksh300" style="display:none;">
+<h1 id="txt_23">KSH300 Temperature / Humidity Sensor</h1>
+	<div id="ksh300_container">
+	</div>
+</div>
+<div id="fs20Sensor" style="display:none;">
+<h1 id="txt_24">FS20 Sensors</h1>
+	<hr/>
+	<div class="container">
+  		<div class="row">
+    		<div id="fs20Sensor_container_left" class="column-50l">
+			</div>
+    		<div id="fs20Sensor_container_right" class="column-50r">
+			</div>
+		</div>
+	</div>
+	<hr/>
+
+</div>
+<div id="camera" style="display:none;">
+	<h1 id="txt_25">Cameras</h1>
+	<div id="camera_container">
+	</div>
+</div>
+<div id="rpicam" style="display:none;">
+	<h1 id="txt_29">Cameras</h1>
+	<div id="rpicam_container">
+	</div>
+</div>
+
+<div id="switch_TEMPLATE" style="display:none;">
+	<div id="switch_ID" style="display:none;">
+		<span style="float=left;">
+			<label class="switch">
+				<input name="switch_ID" id="switch_ID_check" onclick="handleCheck(this);" type="checkbox">
+				<span class="sliderV2"></span>
+			</label>
+			<a id="switch_ID_label">On/Off Switch</a>
+		</span>
+	</div>
+	<br/>
+</div>
+<div id="sensor_TEMPLATE" style="display:none;">
+	    <div id="sensor_ID" style="display:none;">
+		<meter id="sensor_ID_meter" min="-5" max="40" value="5"></meter>
+        <label id="sensor_ID_label" class="plainlabel">Temp</label>
+		<img src="history24.png" width="30px" height="15px" onclick="requestHistory('sensor_ID');"/>
+		<div id="sensor_ID_chartcanvas" style="display:none;">
+			<hr/>
+			<div id="sensor_ID_chart" style="width: 900px; height: 500px" ></div>
+			<button type="button" onclick="hideChartCanvas('sensor_ID_chartcanvas');">Done</button>
+			<hr/>
+		</div>
+    </div>
+</div>
+
+<div id="history_TEMPLATE" style="display:none;">
+	<img src="./plus.png" name='history_ID' width="25px" height="25px" onclick="showDetails('history_ID');">
+</div>
+<div id="fs20Sensor_TEMPLATE" style="display:none">
+	<div id="fs20Sensor_ID" style="display:none;">
+		<span>
+		<a id="fs20Sensor_ID_label">Temp</a>
+		<a id="fs20Sensor_ID_value" style ="float:right;">Temp</a>
+		</span>
+	</div>
+</div>
+<div id="camera_TEMPLATE" style="display:none;">
+	<div id="camera_ID" style="display:none;">
+		<label id="camera_ID_label" class="plainlabel">cam</label>
+		<button id="camera_ID_snapshot" onclick="showSnapshot('camera_ID');">Snapshot</button>
+		<button id="camera_ID_live" onclick="showLiveStream('camera_ID');">Live Stream </button>
+		<button id="camera_ID_timelapse" onclick="showTimeLapse('camera_ID');">Timelapse</button>
+		<div id="camera_ID_video" style="display:none;width: 900px; height: 500px">
+			<video id="camera_ID_videosource" controls >
+
+			</video>
+			<button id="camera_ID_videoplay" onclick="playLiveStream('camera_ID');">Play</button>
+			<button id="camera_ID_videoclose" onclick="hideVideo('camera_ID');">Close</button>
+			<br/>
+		</div>
+		<div id="camera_ID_picture" class="snapshot" style="display:none;">
+			<img id="camera_ID_picturesource" src="#" style="width: 900px; height: 500px">
+			<button id="camera_ID_pictureclose" onclick="hideSnapshot('camera_ID');">Close</button>
+			<br/>
+		</div>
+
+	</div>
+</div>
+
+<script>
+
+    window.onload = function () {
+    	initUI();
+    	setTimeout(function() {
+        	requestConfig();
+        }, 2);
+    }
+
+    if ('serviceWorker' in navigator) {
+    	window.addEventListener('load', function () {
+        	navigator.serviceWorker.register('/serviceworker.js').then(function (registration) {
+            	console.log('Service worker successfully registered on scope', registration.scope);
+        	}).catch(function (error) {
+            	console.log('Service worker failed to register');
+        	});
+    });
+	}
+
+</script>
+</body>
+</html>
