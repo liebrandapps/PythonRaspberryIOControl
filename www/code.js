@@ -1148,9 +1148,11 @@ function handleVisibilityChange() {
                         var updateTimes = "";
                         var lastServerId = "";
                         var lastUpdate = null;
+                        var accessToken = null;
                         Object.keys(jsn).forEach(function(serverId) {
                             Object.keys(jsn[serverId].data).forEach(function(entityId) {
-                                if (entityId !== 'serverId' && entityId !== 'msgType' && entityId !== 'timeStamp') {
+                                if (entityId !== 'serverId' && entityId !== 'msgType' && entityId !== 'timeStamp'
+                                    && entityId !== 'accessToken') {
                                     updateEntity(serverId, entityId, jsn[serverId].data[entityId]);
                                 }
                                 if (entityId==='timeStamp') {
@@ -1160,13 +1162,16 @@ function handleVisibilityChange() {
                                         lastServerId = serverId;
                                     }
                                 }
+                                if(entityId === 'accessToken') {
+                                    accessToken = jsn[serverId].data.accessToken;
+                                }
                             });
                         });
                         updateTimes = updateTimes + '[' + lastServerId + '] ' + lastUpdate + ' ';
                         document.getElementById('lastUpdateTime').innerHTML = updateTimes;
                         addToHistory("regular", lastUpdate, lastServerId, updateTimes);
-                        if(jsn.data.hasOwnProperty('accessToken')) {
-                            window.localStorage.setItem('accessToken', jsn.data.accessToken);
+                        if(accessToken!=null) {
+                            window.localStorage.setItem('accessToken', accessToken);
                         }
                     }
                 }
