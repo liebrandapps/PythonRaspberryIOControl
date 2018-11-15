@@ -31,6 +31,8 @@ if __name__ == '__main__':
             'fs20SensorCount' : ["Integer", 0],
             'cameraCount' : ["Integer", 0],
             'rpiCam': ["Integer", 0],
+            'bmp180': ["Integer", 0],
+            'awningCount': ["Integer", 0],
             'address' : ["String", ],
             'peerBackup' : ["Array", ]
         }
@@ -52,7 +54,8 @@ if __name__ == '__main__':
     cunoThread = Cuno(ctx)
     if cunoThread.enabled:
         cunoThread.start()
-        ctx.getFS20Wrapper().setCuno(cunoThread)
+        for k in ctx.fs20.keys():
+            ctx.fs20[k].wrapper.cuno=cunoThread
     else:
         cunoThread = None
     prcApiHandler = PRCApiHandler(ctx)

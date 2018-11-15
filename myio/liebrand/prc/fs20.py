@@ -149,6 +149,4 @@ class Fs20Wrapper:
         with open(self.fs20File, 'w') as fp:
             json.dump(self.state, fp)
 
-    def setCuno(self, cuno):
-        self.cuno = cuno
 

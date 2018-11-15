@@ -68,18 +68,18 @@ class Cuno(threading.Thread):
         self.shellCmdLastEvent = {}
         self.deviceLastEvent = {}
         self.sensorAddress = {}
-        hms100t = ctx.getHMS100T()
+        hms100t = ctx.hms100t
         for key in hms100t.keys():
-            self.sensorAddress['HMS100T:' +hms100t[key].getAddress()] = hms100t[key]
-        hms100tf = ctx.getHMS100TF()
+            self.sensorAddress['HMS100T:' +hms100t[key].address] = hms100t[key]
+        hms100tf = ctx.hms100tf
         for key in hms100tf.keys():
-            self.sensorAddress['HMS100TF:' +hms100tf[key].getAddress()] = hms100tf[key]
-        ksh300 = ctx.getKSH300()
+            self.sensorAddress['HMS100TF:' +hms100tf[key].address] = hms100tf[key]
+        ksh300 = ctx.ksh300
         for key in ksh300.keys():
-            self.sensorAddress['KSH300:' +ksh300[key].getAddress()] = ksh300[key]
-        fs20Sensor = ctx.getFS20Sensor()
+            self.sensorAddress['KSH300:' +ksh300[key].address] = ksh300[key]
+        fs20Sensor = ctx.fs20Sensor
         for key in fs20Sensor.keys():
-            self.sensorAddress['FS20Sensor:' +fs20Sensor[key].getAddress()] = fs20Sensor[key]
+            self.sensorAddress['FS20Sensor:' +fs20Sensor[key].address] = fs20Sensor[key]
 
 
 
@@ -298,11 +298,11 @@ class Cuno(threading.Thread):
         now =datetime.now()
         tmpValue = str(value1)
         if tmpValue in device.ignore:
-            return;
+            return
         if value2 is not None:
             tmpValue = "%s | %s" % (str(value1), str(value2))
         m = hashlib.md5()
-        m.update(device.getId() + tmpValue)
+        m.update(device.entityId + tmpValue)
         md5 = m.hexdigest()
         #self.log.debug("%s %s %s" % (device.getId(), tmpValue, md5))
         #self.log.debug(self.deviceLastEvent)
@@ -315,22 +315,22 @@ class Cuno(threading.Thread):
             m.update(d + tmpValue)
             md5 = m.hexdigest()
             #self.log.debug("%s %s %s" % (d, tmpValue, md5))
-            #self.deviceLastEvent[md5] = now
+            self.deviceLastEvent[md5] = now
         # save to db
         now = datetime.now()
         conn = self.ctx.openDatabase()
         cursor = conn.cursor()
         sql = "insert into PushSensorShort(sensorId, value1, value2, atTime) values (?, ?, ?, ?)"
-        colValues = [device.getId(), value1, value2, now]
+        colValues = [device.entityId, value1, value2, now]
         cursor.execute(sql, colValues)
         conn.commit()
         cursor.close()
         self.ctx.closeDatabase(conn)
 
         # send message
-        if not device.disableNotify:
+        if not device.disableNotify and self.ctx.fcm.isFCMEnabled:
             message = {}
-            message[device.getId()] = {FN.FLD_VALUE : tmpValue,
+            message[device.entityId] = {FN.FLD_VALUE : tmpValue,
                                     FN.FLD_TIMESTAMP : str(int(time.time() * 1000)),
                                     FN.FLD_CMD : "cuno"}
             message[Cuno.KEY_SERVERID] = self.serverId
@@ -353,7 +353,7 @@ class Cuno(threading.Thread):
                 lastEvent = 0
             self.shellCmdLastEvent[md5] = now
             params = {}
-            params[device.getId()] = tmpValue
+            params[device.entityId] = tmpValue
             params['lastEvent'] = lastEvent
             params['clientCertFile'] = self.cfg.general.clientCertFile
             params['address'] = self.cfg.general.address

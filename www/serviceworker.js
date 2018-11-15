@@ -67,7 +67,6 @@ self.addEventListener('fetch', function(event){
     }
     else {
         //console.log(event.request);
-        var reqCopy = event.request.clone();
         if(event.request.headers.get('fcm') === 'yes') {
             event.respondWith(postViaFCM(event));
             return;
@@ -83,7 +82,8 @@ self.addEventListener('fetch', function(event){
                     var resCopy = response.clone();
                     caches.open(cacheName)
                        .then(function(cache) {
-                           return cache.put(reqCopy, resCopy);
+                            var reqCopy = event.request.clone();
+                            return cache.put(reqCopy, resCopy);
                        });
                     return response;
                 })

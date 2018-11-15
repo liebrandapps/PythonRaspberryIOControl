@@ -20,7 +20,7 @@ from requests import ConnectionError
 from myio.liebrand.phd.handler import Handler
 from myio.liebrand.prc import Poller
 from myio.liebrand.prc.Entity import Entity, FS20, UltraSonic, Sensor18B20, Switch, HMS100T, Netio230, HMS100TF, KSH300, \
-    FS20Sensor
+    FS20Sensor, Camera, RpiCam, BMP180, Awning
 from myio.liebrand.prc.FieldNames import FN
 from myio.liebrand.prc.config import Config
 
@@ -47,18 +47,20 @@ class PRCApiHandler(Handler):
 
         self.peer = ctx.peer
         self.dcts = [ctx.switch, ctx.fs20, ctx.ultrasonic, ctx.sensor18B20, ctx.netio230, ctx.hms100t,
-            ctx.hms100tf, ctx.ksh300, ctx.fs20Sensor, ctx.camera, ctx.rpiCam]
-        self.switch = ctx.getSwitch()
-        self.fs20 = ctx.getFS20()
-        self.us = ctx.getUltrasonic()
-        self.temp = ctx.getSensor18B20()
-        self.netio230 = ctx.getNetio230()
+            ctx.hms100tf, ctx.ksh300, ctx.fs20Sensor, ctx.camera, ctx.rpiCam, ctx.bmp180, ctx.awning]
+        self.switch = ctx.switch
+        self.fs20 = ctx.fs20
+        self.us = ctx.ultrasonic
+        self.temp = ctx.sensor18B20
+        self.netio230 = ctx.netio230
         self.hms100t = ctx.hms100t
         self.hms100tf = ctx.hms100tf
         self.ksh300 = ctx.ksh300
         self.fs20Sensor = ctx.fs20Sensor
         self.camera = ctx.camera
         self.rpiCam = ctx.rpiCam
+        self.bmp180 = ctx.bmp180
+        self.awning = ctx.awning
         self.cfg.setSection(Config.SECTIONS[Config.WEB])
         self.headline = self.cfg.headline
 
@@ -114,6 +116,8 @@ class PRCApiHandler(Handler):
                 resultCode, dct = self.cmdBackup(fields, dct)
             elif fields[FN.FLD_CMD] == FN.CMD_SNAPSHOT:
                 resultCode, dct = self.cmdSnapshot(fields, dct, host)
+            elif fields[FN.FLD_CMD].startswith('awning'):
+                resultCode, dct = self.cmdAwning(fields, dct, host)
             else:
                 resultCode = 400
                 dct[FN.FLD_STATUS] = FN.fail
@@ -144,7 +148,7 @@ class PRCApiHandler(Handler):
             instance = self.peer[key]
             prdct[FN.FLD_NAME] = instance.getName(locale)
             prdct[FN.FLD_ADDRESS] = instance.getAddress()
-            dct[instance.getId()] = prdct
+            dct[instance.entityId] = prdct
         #
         # Actors & Sensors
         #
@@ -156,17 +160,17 @@ class PRCApiHandler(Handler):
                 if key.startswith('switch'):
                     value = self.queryCachedActorStatus(cursor, key)
                     if value is None:
-                        value = instance.getWrapper().status(instance.getGPIO())
+                        value = instance.wrapper.status(instance.getGPIO())
                     data[FN.FLD_STATUS] = value
                 elif key.startswith('fs20') and not(key.startswith('fs20Sensor')):
                     value = self.queryCachedActorStatus(cursor, key)
                     if value is None:
-                        value = instance.getWrapper().status(instance.getAddress())
+                        value = instance.wrapper.status(instance.getAddress())
                     data[FN.FLD_STATUS] = value
                 elif key.startswith('ultrasonic'):
                     value = self.queryCachedSensorValue(cursor, key)
                     if value is None:
-                        value = instance.getWrapper().measure()
+                        value = instance.wrapper.measure()
                     data[FN.FLD_VALUE] = value
                     rg = instance.getRange()
                     data[FN.FLD_MIN] = rg[0]
@@ -176,7 +180,7 @@ class PRCApiHandler(Handler):
                     value = self.queryCachedSensorValue(cursor, key)
                     status = "ok"
                     if value is None:
-                        status, value = instance.getWrapper().measure(instance.getAddress())
+                        status, value = instance.wrapper.measure(instance.getAddress())
                     data[FN.FLD_VALUE] = value
                     data[FN.FLD_STATUS] = status
                     rg = instance.getRange()
@@ -194,16 +198,21 @@ class PRCApiHandler(Handler):
                         data[FN.FLD_TIMELAPSECODEC] = instance.timelapseCodec
                 elif key.startswith('rpicam'):
                     pass
+                elif key.startswith('bmp180'):
+                    x = instance.wrapper.measure()
+                    data[FN.FLD_VALUE] = "%.1f C | %.2f hPa" % (x[0], x[1])
+                elif key.startswith('awning'):
+                    pass
                 data[FN.FLD_HOST] = host
-                data[FN.FLD_LOCALID] = instance.getId()
+                data[FN.FLD_LOCALID] = instance.entityId
                 data[FN.FLD_SERVERID] = self.serverId
-                dct[instance.getId()] = data
+                dct[instance.entityId] = data
         #
         # Roaming
         #
         idxs = [len(self.switch), len(self.fs20), len(self.us), len(self.temp), len(self.netio230),
                 len(self.hms100t), len(self.hms100tf), len(self.ksh300), len(self.fs20Sensor), len(self.camera),
-                len(self.rpiCam)]
+                len(self.rpiCam), len(self.bmp180), len(self.awning)]
         if roaming:
             for key in self.peer.keys():
                 p = self.peer[key]
@@ -219,7 +228,8 @@ class PRCApiHandler(Handler):
         #
         counters = [FN.FLD_SWITCHCOUNT, FN.FLD_FS20COUNT, FN.FLD_ULTRASONICCOUNT, FN.FLD_TEMPERATURECOUNT,
                     FN.FLD_NETIOCOUNT, FN.FLD_HMS100TCOUNT, FN.FLD_HMS100TFCOUNT, FN.FLD_KSH300COUNT,
-                    FN.FLD_FS20SENSORCOUNT, FN.FLD_CAMERACOUNT, FN.FLD_RPICAMCOUNT]
+                    FN.FLD_FS20SENSORCOUNT, FN.FLD_CAMERACOUNT, FN.FLD_RPICAMCOUNT, FN.FLD_BMP180COUNT,
+                    FN.FLD_AWNING_COUNT]
         for c, i in zip(counters, idxs):
             dct[c] = i
         dct[FN.FLD_PEERCOUNT] = len(self.peer)
@@ -265,10 +275,11 @@ class PRCApiHandler(Handler):
 
         idxs = [len(self.switch), len(self.fs20), len(self.us), len(self.temp), len(self.netio230),
                 len(self.hms100t), len(self.hms100tf), len(self.ksh300), len(self.fs20Sensor),
-                len(self.camera), len(self.rpiCam)]
+                len(self.camera), len(self.rpiCam), len(self.bmp180), len(self.awning)]
         counters = [FN.FLD_SWITCHCOUNT, FN.FLD_FS20COUNT, FN.FLD_ULTRASONICCOUNT, FN.FLD_TEMPERATURECOUNT,
                     FN.FLD_NETIOCOUNT, FN.FLD_HMS100TCOUNT, FN.FLD_HMS100TFCOUNT, FN.FLD_KSH300COUNT,
-                    FN.FLD_FS20SENSORCOUNT, FN.FLD_CAMERACOUNT, FN.FLD_RPICAMCOUNT]
+                    FN.FLD_FS20SENSORCOUNT, FN.FLD_CAMERACOUNT, FN.FLD_RPICAMCOUNT, FN.FLD_BMP180COUNT,
+                    FN.FLD_AWNING_COUNT]
         for c, i in zip(counters, idxs):
             dct[c] = i
         dct[FN.FLD_PEERCOUNT] = len(self.peer)
@@ -283,8 +294,11 @@ class PRCApiHandler(Handler):
             else:
                 break
         dct[FN.FLD_DICTIONARY] = lang
-        dct[FN.FLD_PUBLIC_KEY] = self.ctx.fcm.publicKey
-        dct[FN.FLD_SENDER_ID] = self.ctx.fcm.senderId
+        dct[FN.FLD_PUSHENABLED] = self.ctx.fcm.isFCMEnabled
+        if self.ctx.fcm.isFCMEnabled:
+            dct[FN.FLD_PUBLIC_KEY] = self.ctx.fcm.publicKey
+            dct[FN.FLD_SENDER_ID] = self.ctx.fcm.senderId
+            dct[FN.FLD_FCMURL] = self.ctx.fcm.url
         resultCode = 200
         return [resultCode, dct]
 
@@ -297,34 +311,40 @@ class PRCApiHandler(Handler):
             for key in d.keys():
                 data = {}
                 instance = d[key]
-                if key.startswith('switch') or (key.startswith('fs20') and not(key.startswith('fs20Sensor'))):
-                    value = instance.getWrapper().status(instance.getGPIO())
+                if key.startswith('switch'):
+                    value = instance.wrapper.status(instance.getGPIO())
+                    data[FN.FLD_STATUS] = value
+                elif key.startswith('fs20') and not(key.startswith('fs20Sensor')):
+                    value = instance.wrapper.status(instance.getAddress())
                     data[FN.FLD_STATUS] = value
                 elif key.startswith('netio'):
                     value = instance.status()[1]
                     data[FN.FLD_STATUS] = value
                 elif key.startswith('ultrasonic'):
-                    value = instance.getWrapper().measure()
+                    value = instance.wrapper.measure()
                     data[FN.FLD_VALUE] = value
                 elif key.startswith('temperature'):
-                    status, value = instance.getWrapper().measure(instance.getAddress())
+                    status, value = instance.wrapper.measure(instance.getAddress())
                     data[FN.FLD_VALUE] = value
                     data[FN.FLD_STATUS] = status
                 elif key.startswith('hms100') or key.startswith('ksh300') or key.startswith('fs20Sensor'):
                     data[FN.FLD_VALUE] = self.queryCachedPushSensorValue(cursor, key)
-                dct[instance.getId()] = data
+                elif key.startswith('bmp180'):
+                    x = instance.wrapper.measure()
+                    data[FN.FLD_VALUE] = "%.1f C | %.2f hPa" % (x[0], x[1])
+                dct[instance.entityId] = data
 
         #
         # Roaming
         #
         idxs = [len(self.switch), len(self.fs20), len(self.us), len(self.temp), len(self.netio230),
                 len(self.hms100t), len(self.hms100tf), len(self.fs20Sensor), len(self.camera),
-                len(self.rpiCam)]
+                len(self.rpiCam), len(self.bmp180), len(self.awning)]
         if roaming:
             for key in self.peer.keys():
                 p = self.peer[key]
                 if p.getRoamingAddress() is not None:
-                    self.log.debug("Roaming: Requesting refresh from %s" % p.getRoamingAddress())
+                    self.log.debug("Roaming: Requesting refresh for %s" % p.getRoamingAddress())
                     status, resultDct = self.requestPeerRefresh(p.getRoamingAddress())
                     if status == 200 and resultDct is not None:
                         self.stackPeerConfig(dct, resultDct, idxs)
@@ -335,7 +355,8 @@ class PRCApiHandler(Handler):
         #
         counters = [FN.FLD_SWITCHCOUNT, FN.FLD_FS20COUNT, FN.FLD_ULTRASONICCOUNT, FN.FLD_TEMPERATURECOUNT,
                     FN.FLD_NETIOCOUNT, FN.FLD_HMS100TCOUNT, FN.FLD_HMS100TFCOUNT, FN.FLD_KSH300COUNT,
-                    FN.FLD_FS20SENSORCOUNT, FN.FLD_CAMERACOUNT, FN.FLD_RPICAMCOUNT]
+                    FN.FLD_FS20SENSORCOUNT, FN.FLD_CAMERACOUNT, FN.FLD_RPICAMCOUNT, FN.FLD_BMP180COUNT,
+                    FN.FLD_AWNING_COUNT]
         for c, i in zip(counters, idxs):
             dct[c] = i
         dct[FN.FLD_LASTUPDATETIME] = time.time()
@@ -355,9 +376,9 @@ class PRCApiHandler(Handler):
             if host == targetHost:
                 swdct = {}
                 if key.startswith("switch"):
-                    swdct[FN.FLD_STATUS] = self.switch[key].getWrapper().status(self.switch[key].getGPIO())
+                    swdct[FN.FLD_STATUS] = self.switch[key].wrapper.status(self.switch[key].getGPIO())
                 elif key.startswith("fs20"):
-                    swdct[FN.FLD_STATUS] = self.fs20[key].getWrapper().status(self.fs20[key].getAddress())
+                    swdct[FN.FLD_STATUS] = self.fs20[key].wrapper.status(self.fs20[key].getAddress())
                 else:
                     swdct[FN.FLD_STATUS] = self.netio230[key].status()[1]
                 dct[FN.FLD_STATUS] = FN.ok
@@ -389,10 +410,10 @@ class PRCApiHandler(Handler):
                 for sw in toSwitchList:
                     if sw.startswith("switch"):
                         gpio = self.switch[sw].getGPIO()
-                        result = self.switch[sw].getWrapper().switch(gpio, fields[FN.FLD_VALUE])
+                        result = self.switch[sw].wrapper.switch(gpio, fields[FN.FLD_VALUE])
                     elif sw.startswith("fs20"):
                         address = self.fs20[sw].getAddress()
-                        result = self.fs20[sw].getWrapper().switch(address, fields[FN.FLD_VALUE])
+                        result = self.fs20[sw].wrapper.switch(address, fields[FN.FLD_VALUE])
                     else:
                         result = self.netio230[sw].switch(fields[FN.FLD_VALUE])
                     if FN.FLD_USER in fields:
@@ -451,7 +472,7 @@ class PRCApiHandler(Handler):
                 if switchId.startswith("fs20"):
                     address = self.fs20[switchId].getAddress()
                     useCuno = self.fs20[switchId].getUseCuno()
-                    result = self.fs20[switchId].getWrapper().shine(address, useCuno)
+                    result = self.fs20[switchId].wrapper.shine(address, useCuno)
                     if FN.FLD_USER in fields:
                         user = fields[FN.FLD_USER]
                     else:
@@ -643,10 +664,44 @@ class PRCApiHandler(Handler):
         else:
             resultCode = 500
             dct[FN.FLD_STATUS] = FN.fail
-            dct[FN.FLD_MESSAGE] = "Missing field in JSON (%s &| %s &| %s)" % (FN.FLD_ID,
+            dct[FN.FLD_MESSAGE] = "Missing field in JSON (%s &| %s)" % (FN.FLD_ID,
                                                                               FN.FLD_HOST)
         return [resultCode, dct]
 
+    def cmdAwning(self, fields, dct, host):
+        if FN.FLD_ID in fields and FN.FLD_HOST in fields:
+            targetHost = fields[FN.FLD_HOST]
+            if host == targetHost:
+                # we are local
+                wrapper = self.awning[fields[FN.FLD_ID]].wrapper
+                cmd = ""
+                if fields[FN.FLD_CMD] == FN.CMD_IN:
+                    cmd = wrapper.cmdDriveIn
+                elif fields[FN.FLD_CMD] == FN.CMD_OUT:
+                    cmd = wrapper.cmdDriveOut
+                elif fields[FN.FLD_CMD] == FN.CMD_STOP:
+                    cmd = wrapper.cmdStop
+                if len(cmd) == 0:
+                    resultCode = 500
+                    dct[FN.FLD_STATUS] = FN.fail
+                    dct[FN.FLD_MESSAGE] = "Command for awning not recognized %s" % fields[FN.FLD_CMD]
+                else:
+                    snd, rcv = wrapper.send(self.awning[fields[FN.FLD_ID]].address, cmd)
+                    dct[FN.FLD_STATUS] = FN.ok
+                    dct[FN.FLD_MESSAGE] = "snd %s -> rvc %s" % (snd, rcv)
+                    resultCode = 200
+            else:
+                # remote switch
+                r = requests.post(targetHost, json=fields, verify=self.sslCert)
+                if r.status_code == 200:
+                    dct = json.loads(r.text)
+            resultCode = 200
+        else:
+            resultCode = 500
+            dct[FN.FLD_STATUS] = FN.fail
+            dct[FN.FLD_MESSAGE] = "Missing field in JSON (%s &| %s)" % (FN.FLD_ID,
+                                                                        FN.FLD_HOST)
+        return [resultCode, dct]
 
     def requestPeerConfig(self, address, locale):
         resultDct = None
@@ -698,7 +753,8 @@ class PRCApiHandler(Handler):
 
     def stackPeerConfig(self, localcfg, peerCfg, idxs):
         sections = [Switch.SECTION, FS20.SECTION, UltraSonic.SECTION, Sensor18B20.SECTION, Netio230.SECTION,
-                    HMS100T.SECTION, HMS100TF.SECTION, KSH300.SECTION, FS20Sensor.SECTION]
+                    HMS100T.SECTION, HMS100TF.SECTION, KSH300.SECTION, FS20Sensor.SECTION, Camera.SECTION,
+                    RpiCam.SECTION, BMP180.SECTION, Awning.SECTION]
 
         for s, idx in zip(sections, range(len(idxs))):
             i = 1
@@ -746,7 +802,7 @@ class PRCApiHandler(Handler):
         return result
 
     def querySensorHistory24(self, cursor, sensorId):
-        sql = "select hour, quarter, value1 from SensorShort where sensorId = ? order by atTime"
+        sql = "select hour, quarter, value1, value2 from SensorShort where sensorId = ? order by atTime"
         colValues = [sensorId, ]
         cursor.execute(sql, colValues)
         rows = cursor.fetchall()
@@ -755,7 +811,10 @@ class PRCApiHandler(Handler):
             hour = r[0]
             quarter = r[1]
             ts = "%02d:%02d" % (hour, quarter * 15)
-            set.append([ts, r[2]])
+            if r[3] is None:
+                set.append([ts, r[2]])
+            else:
+                set.append([ts, r[2], r[3]])
         if len(set)> 15:
             for s in set:
                 if s[0].endswith('5'):

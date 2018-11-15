@@ -75,7 +75,7 @@ class Poller(threading.Thread):
             colValues = [hour, quarter]
             cursor.execute(sql, colValues)
             delDCount += cursor.rowcount
-            sensor18DS20 = self.ctx.getSensor18B20()
+            sensor18DS20 = self.ctx.sensor18B20
             for key in sensor18DS20.keys():
                 instance = sensor18DS20[key]
                 value = instance.measure()
@@ -85,7 +85,7 @@ class Poller(threading.Thread):
                 cursor.execute(sql, colValues)
                 messageDict[key] = value[1]
                 insDCount += cursor.rowcount
-            us = self.ctx.getUltrasonic()
+            us = self.ctx.ultrasonic
             for key in us.keys():
                 instance = us[key]
                 value = instance.measure()
@@ -94,41 +94,52 @@ class Poller(threading.Thread):
                 cursor.execute(sql, colValues)
                 messageDict[key] = value
                 insDCount += cursor.rowcount
-            # topic message regular Update
-            messageDict[FN.FLD_SERVERID] = self.serverId
-            messageDict[Poller.KEY_MSGTYPE] = "regUpdate"
-            messageDict[Poller.KEY_TIMESTAMP] = str(int(time.time()*1000))
-            pn = self.ctx.getPushNotify()
-            messageDict[FN.FLD_ACCESSTOKEN] = pn.get_access_token()
-            payload = pn.buildDataMessage(Poller.TOPIC_UPDATE, messageDict)
-            pn.pushMessageDirect(payload)
-            # topic message for event updates
-            combinedDict = {}
-            combinedDict[FN.FLD_SERVERID] = self.serverId
-            combinedDict[Poller.KEY_TIMESTAMP] = str(int(time.time() * 1000))
-            combinedDict[Poller.KEY_MSGTYPE] = "evtUpdate"
-            sql = "select rowid, payload from PNQueue"
-            cursor.execute(sql)
-            rows = cursor.fetchall()
-            if len(rows)>0:
-                sql = "delete from PNQueue where rowid = ?"
-                rowIds = []
-                for r in rows:
-                    dta = json.loads(r[1])
-                    sub = dta['message']['data']
-                    for k in sub.keys():
-                        if k != FN.FLD_SERVERID and k != Poller.KEY_MSGTYPE:
-                            if k not in combinedDict or sub[k][FN.FLD_TIMESTAMP]>combinedDict[k][FN.FLD_TIMESTAMP]:
-                                combinedDict[k] = sub[k]
-                    rowIds.append(r[0])
-                sql = "delete from PNQueue where rowid in (?)"
-                colValues = [",".join(str(r) for r in rowIds),]
+            bmp = self.ctx.bmp180
+            for key in bmp.keys():
+                instance = bmp[key]
+                value = instance.wrapper.measure()
+                sql = "insert into SensorShort(sensorId, value1, value2, hour, quarter, slot, atTime) values (?, ?, ?, ?, ?, ?, ?)"
+                colValues = [key, value[0], value[1], hour, quarter, slot, now]
                 cursor.execute(sql, colValues)
-                #for k in combinedDict.keys():
-                #    if k != FN.FLD_SERVERID and k != Poller.KEY_MSGTYPE:
-                #        combinedDict[k] = json.dumps(combinedDict[k])
-                payload = pn.buildDataMessage(Poller.TOPIC_UPDATE, combinedDict)
+                messageDict[key] = value
+                insDCount += cursor.rowcount
+
+            if self.ctx.fcm.isFCMEnabled:
+                # topic message regular Update
+                messageDict[FN.FLD_SERVERID] = self.serverId
+                messageDict[Poller.KEY_MSGTYPE] = "regUpdate"
+                messageDict[Poller.KEY_TIMESTAMP] = str(int(time.time()*1000))
+                pn = self.ctx.getPushNotify()
+                messageDict[FN.FLD_ACCESSTOKEN] = pn.get_access_token()
+                payload = pn.buildDataMessage(Poller.TOPIC_UPDATE, messageDict)
                 pn.pushMessageDirect(payload)
+                # topic message for event updates
+                combinedDict = {}
+                combinedDict[FN.FLD_SERVERID] = self.serverId
+                combinedDict[Poller.KEY_TIMESTAMP] = str(int(time.time() * 1000))
+                combinedDict[Poller.KEY_MSGTYPE] = "evtUpdate"
+                sql = "select rowid, payload from PNQueue"
+                cursor.execute(sql)
+                rows = cursor.fetchall()
+                if len(rows)>0:
+                    sql = "delete from PNQueue where rowid = ?"
+                    rowIds = []
+                    for r in rows:
+                        dta = json.loads(r[1])
+                        sub = dta['message']['data']
+                        for k in sub.keys():
+                            if k != FN.FLD_SERVERID and k != Poller.KEY_MSGTYPE:
+                                if k not in combinedDict or sub[k][FN.FLD_TIMESTAMP]>combinedDict[k][FN.FLD_TIMESTAMP]:
+                                    combinedDict[k] = sub[k]
+                        rowIds.append(r[0])
+                    sql = "delete from PNQueue where rowid in (?)"
+                    colValues = [",".join(str(r) for r in rowIds),]
+                    cursor.execute(sql, colValues)
+                    #for k in combinedDict.keys():
+                    #    if k != FN.FLD_SERVERID and k != Poller.KEY_MSGTYPE:
+                    #        combinedDict[k] = json.dumps(combinedDict[k])
+                    payload = pn.buildDataMessage(Poller.TOPIC_UPDATE, combinedDict)
+                    pn.pushMessageDirect(payload)
             #sql = "select token from subscriptions"
             #cursor.execute(sql)
             #rows = cursor.fetchall()

@@ -8,11 +8,13 @@ from os.path import join, exists, dirname, isdir
 from os import access, W_OK, R_OK
 
 from myio.liebrand.prc.Entity import Switch, FS20, UltraSonic, Sensor18B20, Netio230, HMS100T, HMS100TF, KSH300, \
-    FS20Sensor, Peer, Camera, RpiCam
+    FS20Sensor, Peer, Camera, RpiCam, BMP180, Awning
 from myio.liebrand.prc.Sens18B20 import Sens18B20Wrapper
 from myio.liebrand.prc.config import Config
 from myio.liebrand.prc.fs20 import Fs20Wrapper
 from myio.liebrand.prc.i2c import i2cWrapper
+from myio.liebrand.prc.local.Awning import AwningWrapper
+from myio.liebrand.prc.local.BMP180 import BMP180Wrapper
 from myio.liebrand.prc.local.Camera import CamModule
 from myio.liebrand.prc.remote.Camera import IPCamera
 from myio.liebrand.prc.remote.Netio230 import Netio230Wrapper
@@ -53,6 +55,8 @@ class Context:
         self.fs20Sensor = {}
         self.camera = {}
         self.rpiCam = {}
+        self.bmp180 = {}
+        self.awning = {}
         self.fcm = PushNotification(self)
         self.api = None
         self.setupDevices()
@@ -157,98 +161,90 @@ class Context:
         fs20SensorCount = self.cfg.general_fs20SensorCount
         cameraCount = self.cfg.general_cameraCount
         rpiCamCount = self.cfg.general_rpiCam
+        bmp180Count = self.cfg.general_bmp180
+        awningCount = self.cfg.general_awningCount
         self.cfg.setSection(Config.SECTIONS[Config.GENERAL])
-        i2c = i2cWrapper()
-        self.fs20Wrapper = Fs20Wrapper(self.cfg.fs20Data)
-        usWrapper = UltraSonicWrapper()
-        tempWrapper = Sens18B20Wrapper()
-        netioWrapper = Netio230Wrapper()
-        cameraWrapper = IPCamera()
+
 
         # peer is not really a device ... anyhow
         peerCount = self.cfg.peerCount
         for index in range(peerCount):
             pr = Peer(index + 1, self.cfg)
-            self.peer[pr.getId()] = pr
+            self.peer[pr.entityId] = pr
 
-        for index in range(switchCount):
-            sw = Switch(index + 1, self.cfg)
-            sw.setWrapper(i2c)
-            self.switch[sw.getId()] = sw
+        if switchCount>0:
+            i2c = i2cWrapper()
+            for index in range(switchCount):
+                sw = Switch(index + 1, self.cfg)
+                sw.wrapper=i2c
+                self.switch[sw.entityId] = sw
 
-        for index in range(fs20Count):
-            fs = FS20(index + 1, self.cfg)
-            fs.setWrapper(self.fs20Wrapper)
-            self.fs20[fs.getId()] = fs
+        if fs20Count>0:
+            for index in range(fs20Count):
+                fs = FS20(index + 1, self.cfg)
+                fs.wrapper=Fs20Wrapper(self.cfg.fs20Data)
+                self.fs20[fs.entityId] = fs
 
-        for index in range(ultrasonicCount):
-            wl = UltraSonic(index + 1, self.cfg)
-            wl.setWrapper(usWrapper)
-            self.ultrasonic[wl.getId()] = wl
+        if ultrasonicCount>0:
+            usWrapper = UltraSonicWrapper()
+            for index in range(ultrasonicCount):
+                wl = UltraSonic(index + 1, self.cfg)
+                wl.wrapper=usWrapper
+                self.ultrasonic[wl.entityId] = wl
 
-        for index in range(temperatureCount):
-            t = Sensor18B20(index + 1, self.cfg)
-            t.setWrapper(tempWrapper)
-            self.sensor18B20[t.getId()] = t
+        if temperatureCount>0:
+            tempWrapper = Sens18B20Wrapper()
+            for index in range(temperatureCount):
+                t = Sensor18B20(index + 1, self.cfg)
+                t.wrapper=tempWrapper
+                self.sensor18B20[t.entityId] = t
 
-        for index in range(netioCount):
-            n = Netio230(index + 1, self.cfg)
-            n.setWrapper(netioWrapper)
-            self.netio230[n.getId()] = n
+        if netioCount>0:
+            netioWrapper = Netio230Wrapper()
+            for index in range(netioCount):
+                n = Netio230(index + 1, self.cfg)
+                n.wrapper=netioWrapper
+                self.netio230[n.entityId] = n
 
         for index in range(hms100tCount):
             h = HMS100T(index+1, self.cfg)
-            self.hms100t[h.getId()] = h
+            self.hms100t[h.entityId] = h
 
         for index in range(hms100tfCount):
             h = HMS100TF(index+1, self.cfg)
-            self.hms100tf[h.getId()] = h
+            self.hms100tf[h.entityId] = h
 
         for index in range(ksh300Count):
             k = KSH300(index+1, self.cfg)
-            self.ksh300[k.getId()] = k
+            self.ksh300[k.entityId] = k
 
         for index in range(fs20SensorCount):
             f = FS20Sensor(index+1, self.cfg)
-            self.fs20Sensor[f.getId()] = f
+            self.fs20Sensor[f.entityId] = f
 
-        for index in range(cameraCount):
-            c = Camera(index+1, self.cfg)
-            c.setWrapper(cameraWrapper)
-            self.camera[c.getId()] = c
+        if cameraCount>0:
+            cameraWrapper = IPCamera()
+            for index in range(cameraCount):
+                c = Camera(index+1, self.cfg)
+                c.wrapper=cameraWrapper
+                self.camera[c.entityId] = c
 
         for index in range(rpiCamCount):
             c = RpiCam(index+1, self.cfg)
-            c.setWrapper(CamModule(c.resX, c.resY))
-            self.rpiCam[c.getId()] = c
+            c.wrapper=CamModule(c.resX, c.resY)
+            self.rpiCam[c.entityId] = c
+
+        for index in range(bmp180Count):
+            c = BMP180(index+1, self.cfg)
+            c.wrapper=BMP180Wrapper()
+            self.bmp180[c.entityId] = c
+
+        if awningCount>0:
+            awningWrapper = AwningWrapper()
+            for index in range(awningCount):
+                o = Awning(index+1, self.cfg)
+                o.wrapper = awningWrapper
+                self.awning[o.entityId] = o
 
 
-    def getSwitch(self):
-        return self.switch
 
-    def getFS20(self):
-        return self.fs20
-
-    def getFS20Wrapper(self):
-        return self.fs20Wrapper
-
-    def getUltrasonic(self):
-        return self.ultrasonic
-
-    def getSensor18B20(self):
-        return self.sensor18B20
-
-    def getNetio230(self):
-        return self.netio230
-
-    def getHMS100T(self):
-        return self.hms100t
-
-    def getHMS100TF(self):
-        return self.hms100tf
-
-    def getKSH300(self):
-        return self.ksh300
-
-    def getFS20Sensor(self):
-        return self.fs20Sensor

@@ -31,7 +31,7 @@
 		<a id="txt_10" href="#" onclick="openNav();">Menu</a>
 		<img src="/refresh.png" height="25px" width="25px" onclick="handleRefresh();">
 	</span>
-    <span style="float:right;">
+    <span id="fcm_container" style="float:right;">
 		<a id="txt_27">Updates</a>
 		<label class="switch">
   			<input name="sensorUpdate" id="fcm_1_check" onclick="handleFCM(this);" type="checkbox">
@@ -62,8 +62,10 @@
     <a id="txt_18" style="text-align:left;" href="#" onclick="showArea('hms100tf');">Temperature<span style="float:right;">[HMS100TF]</span></a>
     <a id="txt_19" style="text-align:left;" href="#" onclick="showArea('ksh300');">Temperature<span style="float:right;">[KSH300]</span></a>
     <a id="txt_20" style="text-align:left;" href="#" onclick="showArea('fs20Sensor');">Sensors<span style="float:right;">[FS20]</span></a>
-	<a id="txt_26" style="text-align:left;" href="#" onclick="showArea('camera');">Cameras<span style="float:right;">[ONVIF]</a>
-	<a id="txt_28" style="text-align:left;" href="#" onclick="showArea('rpicam');">Cameras<span style="float:right;">[RPI]</a>
+	<a id="txt_31" style="text-align:left;" href="#" onclick="showArea('bmp180');">Temp/Air Pressure<span style="float:right;">[BMP180]</span></a>
+	<a id="txt_33" style="text-align:left;" href="#" onclick="showArea('awning');">Awning</a>
+	<a id="txt_26" style="text-align:left;" href="#" onclick="showArea('camera');">Cameras<span style="float:right;">[ONVIF]</span></a>
+	<a id="txt_28" style="text-align:left;" href="#" onclick="showArea('rpicam');">Cameras<span style="float:right;">[RPI]</span></a>
     <a id="txt_8" href="#" onclick="showArea('peer');">Peers</a>
     <a id="txt_9" href="#" onclick="showArea('about');">About</a>
 </div>
@@ -87,31 +89,35 @@
 				<br>
 				<span><a>Uptime:</a><a style="float:right;" id="serverUptime"></a></span>
 				<br>
-				<span><a>Relay Board Switches</a><a style="float:right;" id="switchCount"></a></span>
-				<br>
-				<span><a>FS20 Actors</a><a style="float:right;" id="fs20Count"></a></span>
-				<br>
-				<span><a>NetIO230 Actors</a><a style="float:right;" id="netioCount"></a></span>
-				<br>
-				<span><a>Ultrasonic</a><a style="float:right;" id="ultrasonicCount"></a></span>
-				<br>
-				<span><a>Temperature (DS18B20)</a><a style="float:right;" id="temperatureCount"></a></span>
-				<br/>
-				<span><a>Temperature (HMS100T)</a><a style="float:right;" id="hms100tCount"></a></span>
-				<br/>
-				<span><a>Temperature / Humidity (HMS100TF)</a><a style="float:right;" id="hms100tfCount"></a></span>
-				<br/>
-				<span><a>Temperature /Humidity (KSH300)</a><a style="float:right;" id="ksh300Count"></a></span>
-				<br/>
-				<span><a>FS20 Sensors</a><a style="float:right;" id="fs20SensorCount"></a></span>
-				<br/>
-				<span><a>ONVIF Cameras</a><a style="float:right;" id="cameraCount"></a></span>
-				<br/>
-				<span><a>RPI Cameras</a><a style="float:right;" id="rpicamCount"></a></span>
-				<br/>
-				<span><a>Connected Servers</a><a style="float:right;" id="serverCount"></a></span>
-				<br/>
-				<span><a>Last update received:</a><a style="float:right;" id="lastUpdateTime">never</a></span>
+				<div id="line_switchCount"><span><a>Relay Board Switches</a><a style="float:right;" id="switchCount"></a></span>
+					<br></div>
+				<div id="line_fs20Count"><span><a>FS20 Actors</a><a style="float:right;" id="fs20Count"></a></span>
+					<br></div>
+				<div id="line_netioCount"><<span><a>NetIO230 Actors</a><a style="float:right;" id="netioCount"></a></span>
+					<br></div>
+				<div id="line_ultrasonicCount"><span><a>Ultrasonic</a><a style="float:right;" id="ultrasonicCount"></a></span>
+					<br></div>
+				<div id="line_temperatureCount"><span><a>Temperature (DS18B20)</a><a style="float:right;" id="temperatureCount"></a></span>
+					<br/></div>
+				<div id="line_hms100tCount"><span><a>Temperature (HMS100T)</a><a style="float:right;" id="hms100tCount"></a></span>
+					<br/></div>
+				<div id="line_hms100tfCount"><span><a>Temperature / Humidity (HMS100TF)</a><a style="float:right;" id="hms100tfCount"></a></span>
+					<br/></div>
+				<div id="line_ksh300Count"><span><a>Temperature /Humidity (KSH300)</a><a style="float:right;" id="ksh300Count"></a></span>
+					<br/></div>
+				<div id="line_fs20SensorCount"><span><a>FS20 Sensors</a><a style="float:right;" id="fs20SensorCount"></a></span>
+					<br/></div>
+				<div id="line_bmp180Count"><span><a>BMP180 Temp/Air Pressure</a><a style="float:right;" id="bmp180Count"></a></span>
+					<br/></div>
+				<div id="line_awningCount"><span><a>Awning</a><a style="float:right;" id="awningCount"></a></span>
+					<br/></div>
+				<div id="line_cameraCount"><span><a>ONVIF Cameras</a><a style="float:right;" id="cameraCount"></a></span>
+					<br/></div>
+				<div id="line_rpicamCount"><span><a>RPI Cameras</a><a style="float:right;" id="rpicamCount"></a></span>
+					<br/></div>
+				<div id="line_serverCount"><span><a>Connected Servers</a><a style="float:right;" id="serverCount"></a></span>
+					<br/></div>
+				<div id="line_lastUpdateTime"><span><a>Last update received:</a><a style="float:right;" id="lastUpdateTime">never</a></span></div>
     		</div>
     		<div class="column-50r">
 				<table id="history">
@@ -270,6 +276,19 @@
 	<div id="rpicam_container">
 	</div>
 </div>
+<div id="bmp180" style="display:none;">
+	<h1 id="txt_32">BMP085 / 180 Temperature / Air Pressure Sensor</h1>
+	<div id="bmp180_container">
+
+	</div>
+</div>
+<div id="awning" style="display:none;">
+	<h1 id="txt_34">Awning / Sunblind Control</h1>
+	<div id="awning_container">
+
+	</div>
+</div>
+
 
 <div id="switch_TEMPLATE" style="display:none;">
 	<div id="switch_ID" style="display:none;">
@@ -328,6 +347,14 @@
 			<br/>
 		</div>
 
+	</div>
+</div>
+<div id="awning_TEMPLATE" style="display:none;">
+	<div id="awning_ID" style="display:none;">
+		<label id="awning_ID_label" class="plainlabel">cam</label>
+		<button id="awning_ID_in" onclick="awningCmd('awning_ID', 'awningDriveIn');">In</button>
+		<button id="awning_ID_stop" onclick="awningCmd('awning_ID', 'awningDriveStop');">Stop</button>
+		<button id="awning_ID_out" onclick="awningCmd('awning_ID', 'awningDriveOut');">Out</button>
 	</div>
 </div>
 

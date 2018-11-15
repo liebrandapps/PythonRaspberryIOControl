@@ -42,14 +42,7 @@ class Entity:
             else:
                 return("?")
 
-    def getId(self):
-        return self.entityId
 
-    def setWrapper(self, wrapper):
-        self.wrapper = wrapper
-
-    def getWrapper(self):
-        return self.wrapper
 
 class Peer(Entity):
 
@@ -163,7 +156,7 @@ class Sensor18B20(Entity):
         return self.address
 
     def measure(self):
-        return self.getWrapper().measure(self.address)
+        return self.wrapper.measure(self.address)
 
 
 class Netio230(Entity):
@@ -188,13 +181,13 @@ class Netio230(Entity):
         return self.accessId
 
     def status(self):
-        return self.getWrapper().getStatus(self.accessId, self.address)
+        return self.wrapper.getStatus(self.accessId, self.address)
 
     def switch(self, newValue):
         if newValue == "on":
-            return self.getWrapper().turnOn(self.accessId, self.address)
+            return self.wrapper.turnOn(self.accessId, self.address)
         else:
-            return self.getWrapper().turnOff(self.accessId, self.address)
+            return self.wrapper.turnOff(self.accessId, self.address)
 
 class HMS100T(Entity):
 
@@ -297,11 +290,35 @@ class RpiCam(Entity):
     def __init__(self, index, cfg):
         cfgDict = {
             RpiCam.SECTION % index: {
-                "resX": ["Integer", 3240],
-                "resY": ["Integer", 2464]
+                "resX": ["Integer", 2592],
+                "resY": ["Integer", 1944]
             }
         }
         Entity.__init__(self, cfgDict, cfg)
         self.resX = getattr(cfg, "%s_resX" % self.entityId)
         self.resY = getattr(cfg, "%s_resY" % self.entityId)
 
+class BMP180(Entity):
+
+    SECTION = "bmp180_%d"
+
+    def __init__(self, index, cfg):
+        cfgDict = {
+            BMP180.SECTION % index: {
+            }
+        }
+        Entity.__init__(self, cfgDict, cfg)
+
+
+class Awning(Entity):
+
+    SECTION ="awning_%d"
+
+    def __init__(self, index, cfg):
+        cfgDict = {
+            Awning.SECTION % index: {
+                'address': ["String", ]
+            }
+        }
+        Entity.__init__(self, cfgDict, cfg)
+        self.address = getattr(cfg, '%s_address' % self.entityId)

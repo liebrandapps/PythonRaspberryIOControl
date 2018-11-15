@@ -10,6 +10,9 @@ var MAX_HMS100TF = 0;
 var MAX_KSH300 = 0;
 var MAX_FS20SENSOR = 0;
 var MAX_CAMERA = 0;
+var MAX_BMP180 = 0;
+var MAX_AWNING = 0;
+var MAX_RPICAM = 0;
 var updateInProgress = false;
 var url = "/prcapi"
 var hostMap = {};
@@ -28,12 +31,14 @@ var clientId = null;
 var publicKey = "";
 var senderId = "";
 var messaging = null;
+var fcmUrl = "";
 
 // Initialize the Firebase app in the service worker by passing in the
 // messagingSenderId. - if we have the data in local storage
 if (window.localStorage.getItem('publicKey')!=null) {
     publicKey = window.localStorage.getItem('publicKey');
     senderId = window.localStorage.getItem('senderId');
+    fcmUrl = window.localStorage.getItem('fcmUrl');
     setupFCM(publicKey, senderId);
 }
 
@@ -51,7 +56,7 @@ if (typeof document.hidden !== "undefined") {
 }
 
 if (typeof document.addEventListener === "undefined" || typeof document[hidden] === "undefined") {
-  		console.log("This demo requires a browser, such as Google Chrome or Firefox, that supports the Page Visibility API.");
+  		console.log("This app requires a browser, such as Google Chrome or Firefox, that supports the Page Visibility API.");
 } else {
   		document.addEventListener(visibilityChange, handleVisibilityChange, false);
 }
@@ -62,7 +67,7 @@ function openNav() {
         popupIsShowing = false;
         document.getElementById("myPopup").classList.toggle("show");
     }
-    document.getElementById("mySidenav").style.width = "350px";
+    document.getElementById("mySidenav").style.width = "400px";
 }
 
 /* Set the width of the side navigation to 0 */
@@ -93,18 +98,28 @@ function initUI() {
                 var jsn = JSON.parse(this.responseText)
                 console.log(jsn)
                 document.title = jsn.name;
-                window.localStorage.setItem('senderId', jsn.senderId);
-                window.localStorage.setItem('publicKey', jsn.publicKey);
-                if(senderId == null || jsn.senderId!=senderId) {
-                    senderId=jsn.senderId;
-                    if(firebase.apps.length) {
-                        firebase.app().delete().then(function() {
+                if(jsn.pushEnabled) {
+                    window.localStorage.setItem('senderId', jsn.senderId);
+                    window.localStorage.setItem('publicKey', jsn.publicKey);
+                    window.localStorage.setItem('fcmUrl', jsn.fcmUrl);
+                    fcmUrl = jsn.fcmUrl;
+                    if(senderId == null || jsn.senderId!=senderId) {
+                        senderId=jsn.senderId;
+                        if(firebase.apps.length) {
+                            firebase.app().delete().then(function() {
+                                setupFCM(jsn.publicKey, jsn.senderId);
+                            });
+                        }
+                        else {
                             setupFCM(jsn.publicKey, jsn.senderId);
-                        });
+                        }
                     }
-                    else {
-                        setupFCM(jsn.publicKey, jsn.senderId);
-                    }
+                }
+                else {
+                    console.log("[FCM] Push Messages not enabled on server side");
+                    document.getElementById('history').style.display = 'none';
+                    document.getElementById('fcm_container').style.display = 'none';
+                    document.getElementById('line_lastUpdateTime').style.display = 'none';
                 }
                 document.getElementById("txt_1").innerHTML = jsn.dictionary.txt_1 + '<span style="float:right;">' +
                                     jsn.dictionary.txt_2;
@@ -140,86 +155,94 @@ function initUI() {
                     tmp = tmp + jsn.uptime[3] + " seconds";
                 }
                 document.getElementById("serverUptime").innerHTML = tmp;
-                let sC = 0;
-                let fC = 0;
-                let uC = 0;
-                let tC = 0;
-                let nC = 0;
-                let cC = 0;
-                let rpicamC = 0;
-                let hms100tExt = 0;
-                let hms100tfExt = 0;
-                let ksh300Ext = 0;
-                let fs20SensorExt = 0;
-                jsn.address.forEach(server => {
-                    sC = sC + jsn[server].switchCount;
-                    fC = fC + jsn[server].fs20Count;
-                    uC = uC + jsn[server].ultrasonicCount;
-                    tC = tC + jsn[server].temperatureCount;
-                    nC = nC + jsn[server].netioCount;
-                    cC = cC + jsn[server].cameraCount;
-                    rpicamC += jsn[server].rpicamCount;
-                    hms100tExt += jsn[server].hms100tCount;
-                    hms100tfExt += jsn[server].hms100tfCount;
-                    ksh300Ext += jsn[server].ksh300Count;
-                    fs20SensorExt += jsn[server].fs20SensorCount;
+
+                const arrId = [ "switchCount", "fs20Count", "ultrasonicCount", "temperatureCount", "netioCount",
+                                "cameraCount", "rpicamCount", "hms100tCount", "hms100tfCount", "ksh300Count",
+                                "fs20SensorCount", "bmp180Count", "awningCount" ];
+                let arrCount = [jsn.switchCount, jsn.fs20Count, jsn.ultrasonicCount, jsn.temperatureCount,
+                                jsn.netioCount, jsn.cameraCount, jsn.rpicamCount, jsn.hms100tCount, jsn.hms100tfCount,
+                                jsn.ksh300Count, jsn.fs20SensorCount, jsn.bmp180Count, jsn.awningCount];
+                let idx = 0;
+                while(idx<arrId.length) {
+                    jsn.address.forEach(server => {
+                        arrCount[idx] += jsn[server][arrId[idx]];
+                    });
+                    idx += 1;
+                }
+
+                zip = (...rows) => [...rows[0]].map((_,c) => rows.map(row => row[c]));
+                zip(arrCount, arrId).forEach(function(item) {
+                    if(item[0] == 0) {
+                        document.getElementById("line_" + item[1]).style.display = 'none';
+                    }
+                    else {
+                        document.getElementById(item[1]).innerHTML = item[0];
+                    }
                 });
-                document.getElementById("switchCount").innerHTML = jsn.switchCount + " + " + sC;
-                document.getElementById("fs20Count").innerHTML = jsn.fs20Count + " + " + fC;
-                document.getElementById("ultrasonicCount").innerHTML = jsn.ultrasonicCount + " + " + uC;
-                document.getElementById("temperatureCount").innerHTML = jsn.temperatureCount + " + " + tC;
-                document.getElementById("netioCount").innerHTML = jsn.netioCount + " + " + nC;
-                document.getElementById("serverCount").innerHTML = jsn.address.length;
-                document.getElementById("cameraCount").innerHTML = jsn.cameraCount + " + " + cC;
-                document.getElementById("rpicamCount").innerHTML = jsn.rpicamCount + " + " + rpicamC;
-                document.getElementById("hms100tCount").innerHTML = jsn.hms100tCount + " + " + hms100tExt;
-                document.getElementById("hms100tfCount").innerHTML = jsn.hms100tfCount + " + " + hms100tfExt;
-                document.getElementById("ksh300Count").innerHTML = jsn.ksh300Count + " + " + ksh300Ext;
-                document.getElementById("fs20SensorCount").innerHTML = jsn.fs20SensorCount + " + " + fs20SensorExt;
+
+                if((jsn.address.length) == 0) {
+                    document.getElementById("line_serverCount").style.display = 'none';
+                }
+                else {
+                    document.getElementById("serverCount").innerHTML = jsn.address.length;
+                }
+
                 var html = document.getElementById("switch_TEMPLATE").innerHTML;
-                for(i=0; i<jsn.switchCount+sC; i++) {
+                for(i=0; i<arrCount[0]; i++) {
                     reference = "switch_"  + String(i+1);
                     const parent = document.getElementById((i<8)? "switch_container_left" : "switch_container_right")
                     parent.innerHTML += html.replace(/switch_ID/g, reference);
                 }
-                for(i=0; i<jsn.fs20Count+fC; i++) {
+                for(i=0; i<arrCount[1]; i++) {
                     reference = "fs20_"  + String(i+1);
                     const parent = document.getElementById((i<8)? "fs20_container_left" : "fs20_container_right")
                     parent.innerHTML += html.replace(/switch_ID/g, reference);
                 }
-                for(i=0; i<jsn.netioCount+nC; i++) {
+                for(i=0; i<arrCount[4]; i++) {
                     reference = "netio_"  + String(i+1);
                     const parent = document.getElementById((i<8)? "netio_container_left" : "netio_container_right")
                     parent.innerHTML += html.replace(/switch_ID/g, reference);
                 }
                 html = document.getElementById("sensor_TEMPLATE").innerHTML;
-                for(i=0; i<jsn.temperatureCount+tC; i++) {
+                for(i=0; i<arrCount[3]; i++) {
                     reference = "temperature_"  + String(i+1);
                     const parent = document.getElementById((i<8)? "temperature_container_left" : "temperature_container_right")
                     parent.innerHTML += html.replace(/sensor_ID/g, reference);
 
                 }
-                for(i=0; i<jsn.hms100tCount+hms100tExt; i++) {
+                for(i=0; i<arrCount[7]; i++) {
                     reference = "hms100t_"  + String(i+1);
                     const parent = document.getElementById("hms100t_container");
                     parent.innerHTML += html.replace(/sensor_ID/g, reference);
                 }
-                for(i=0; i<jsn.hms100tfCount+hms100tfExt; i++) {
+                for(i=0; i<arrCount[8]; i++) {
                     reference = "hms100tf_"  + String(i+1);
                     const parent = document.getElementById("hms100tf_container");
                     parent.innerHTML += html.replace(/sensor_ID/g, reference);
                 }
-                for(i=0; i<jsn.ksh300Count+ksh300Ext; i++) {
+                for(i=0; i<arrCount[9]; i++) {
                     reference = "ksh300_"  + String(i+1);
                     const parent = document.getElementById("ksh300_container");
                     parent.innerHTML += html.replace(/sensor_ID/g, reference);
                 }
+                for(i=0; i<arrCount[11]; i++) {
+                    reference = "bmp180_"  + String(i+1);
+                    const parent = document.getElementById("bmp180_container");
+                    parent.innerHTML += html.replace(/sensor_ID/g, reference);
+                }
                 html = document.getElementById("fs20Sensor_TEMPLATE").innerHTML;
-                for(i=0; i<jsn.fs20SensorCount+fs20SensorExt; i++) {
+                for(i=0; i<arrCount[10]; i++) {
                     reference = "fs20Sensor_" + String(i+1);
-                    var parent = document.getElementById((i<8)? "fs20Sensor_container_left" : "fs20Sensor_container_right")
+                    var parent = document.getElementById((i<8)? "fs20Sensor_container_left" : "fs20Sensor_container_right");
                     parent.innerHTML += html.replace(/fs20Sensor_ID/g, reference);
                 }
+                html = document.getElementById("awning_TEMPLATE").innerHTML;
+                for(i=0; i<arrCount[12]; i++) {
+                    reference = "awning_" + String(i+1);
+                    var parent = document.getElementById("awning_container");
+                    parent.innerHTML += html.replace(/awning_ID/g, reference);
+                }
+
                 showArea('about');
                 var popup = document.getElementById("myPopup");
                 setTimeout(function() {
@@ -256,6 +279,8 @@ function showArea(areaId) {
     areaIds.add("fs20Sensor");
     areaIds.add("camera");
     areaIds.add("rpicam");
+    areaIds.add("bmp180");
+    areaIds.add("awning");
     areaIds.forEach(divId => {
         if (areaId === divId) {
             document.getElementById(divId).style.display = 'block';
@@ -267,28 +292,6 @@ function showArea(areaId) {
     closeNav();
 }
 
-
-function driveIn(tag) {
-    sendCommand(tag, 'in');
-}
-
-function driveOut(tag) {
-    sendCommand(tag, 'out');
-}
-
-function driveStop(tag) {
-    sendCommand(tag, 'stop');
-}
-
-function sendCommand(tag, cmd) {
-    console.log(tag)
-    const params = { tag : tag, cmd : cmd };
-    var http = new XMLHttpRequest();
-
-    http.open('POST', url, true);
-    http.setRequestHeader('Content-Type', 'application/json');
-    http.send(JSON.stringify(params))
-}
 
 function handleCheck(checkbox) {
     if(!updateInProgress) {
@@ -306,7 +309,6 @@ function handleCheck(checkbox) {
         else {
             switchId = checkbox.name
         };
-        let fcmUrl = "https://fcm.googleapis.com/v1/projects/pythonrasperrycontrol/messages:send"
         let timeStamp = window.performance.now().toString();
         let clientId = window.localStorage.getItem('clientId');
         let accessToken = window.localStorage.getItem('accessToken');
@@ -331,7 +333,7 @@ function handleCheck(checkbox) {
                 }
                 else {
                     //console.log("Done with Switch - now check, if it really switched");
-                        refreshSwitchValue(checkbox.name);
+                    refreshSwitchValue(checkbox.name);
                 }
             }
         }
@@ -669,6 +671,47 @@ function requestConfig() {
                             pushMap[pushKey] = map;
                          }
                     }
+                    MAX_BMP180 = jsn.bmp180Count;
+                    if(MAX_BMP180==0) {
+                        document.getElementById("bmp180").style.display = 'none';
+                        document.getElementById("txt_31").style.display = 'none';
+                    }
+                    else {
+                        for(i=0; i<MAX_BMP180; i++) {
+                            reference = "bmp180_" + String(i+1);
+                            document.getElementById(reference).style.display = 'block';
+                            document.getElementById(reference + "_label").innerHTML=jsn[reference].name + ": " +
+                                    jsn[reference].value;
+                            hostMap[reference] = jsn[reference].host;
+                            localIdMap[reference] = jsn[reference].localId;
+                            var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
+                            var map = {}
+                            map['docId'] = reference;
+                            map['docType'] = 'BMP180';
+                            map['name'] = jsn[reference].name;
+                            pushMap[pushKey] = map;
+                        }
+                    }
+                    MAX_AWNING = jsn.awningCount;
+                    if(MAX_AWNING==0) {
+                        document.getElementById("awning").style.display = 'none';
+                        document.getElementById("txt_33").style.display = 'none';
+                    }
+                    else {
+                        for(i=0; i<MAX_AWNING; i++) {
+                            reference = "awning_" + String(i+1);
+                            document.getElementById(reference).style.display = 'block';
+                            document.getElementById(reference + "_label").innerHTML=jsn[reference].name;
+                            hostMap[reference] = jsn[reference].host;
+                            localIdMap[reference] = jsn[reference].localId;
+                            var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
+                            var map = {}
+                            map['docId'] = reference;
+                            map['docType'] = 'AWNING';
+                            map['name'] = jsn[reference].name;
+                            pushMap[pushKey] = map;
+                        }
+                    }
                 }
                 else {
                     document.getElementById("progress_label").innerHTML = "Loading data from server failed.";
@@ -721,17 +764,12 @@ function handleRefresh() {
                         }
                     }
                     for(i=0; i<MAX_NETIO; i++) {
-                        reference = "netio230_"  + String(i+1);
-                        if(i<jsn.netioCount) {
-                            if(jsn[reference].status === "on") {
-                                document.getElementById(reference + "_check").checked = true;
-                            }
-                            else {
-                                document.getElementById(reference + "_check").checked = false;
-                            }
+                        reference = "netio_"  + String(i+1);
+                        if(jsn[reference].status === "on") {
+                            document.getElementById(reference + "_check").checked = true;
                         }
                         else {
-                            break;
+                            document.getElementById(reference + "_check").checked = false;
                         }
                     }
                     for(i=0; i<MAX_ULTRASONIC; i++) {
@@ -746,14 +784,14 @@ function handleRefresh() {
                     }
                     for(i=0; i<MAX_TEMPERATURE; i++) {
                         reference = "temperature_"  + String(i+1);
-                        if(i<jsn.temperatureCount) {
-                            update18B20(reference, jsn[reference].name, jsn[reference].value);
-                        }
-                        else {
-                            break;
-                        }
-
+                        update18B20(reference, jsn[reference].name, jsn[reference].value);
                     }
+                    for(i=0; i<MAX_BMP180; i++) {
+                        reference = "bmp180_"  + String(i+1);
+                        document.getElementById(reference + "_label").innerHTML=jsn[reference].name + ": " +
+                                    jsn[reference].value;
+                    }
+
                 }
             }
         }
@@ -786,6 +824,9 @@ function requestHistory(sensorId) {
                 else if (sensorId.startsWith('hms100t')) {
                     google.charts.setOnLoadCallback(onChartLoaded3);
                 }
+                else if (sensorId.startsWith('bmp180')) {
+                    google.charts.setOnLoadCallback(onChartLoaded4);
+                }
                 else {
                     google.charts.setOnLoadCallback(onChartLoaded);
                 }
@@ -808,7 +849,7 @@ function onChartLoaded() {
           legend: { position: 'bottom' }
         };
         document.getElementById(currentChart + 'canvas').style.display = 'block';
-    var chart = new google.charts.Line(document.getElementById(currentChart));
+    var chart = new google.visualization.LineChart(document.getElementById(currentChart));
     chart.draw(data, options);
 }
 
@@ -852,6 +893,31 @@ function onChartLoaded3() {
           vAxes: {0: {title: 'Temperature', minValue: 0, maxValue: 18}
                    },
           series: {0: {targetAxisIndex:0} },
+          legend: 'bottom'
+        };
+        document.getElementById(currentChart + 'canvas').style.display = 'block';
+        var chart = new google.visualization.LineChart(document.getElementById(currentChart));
+        chart.draw(data, options);
+
+}
+
+function onChartLoaded4() {
+        var data = new google.visualization.DataTable();
+        data.addColumn('string', 'Time');
+        data.addColumn('number', 'Temperature');
+        data.addColumn('number', 'Air Pressure (hPa)');
+        data.addRows(chartData);
+
+        var options = {
+          theme: 'material',
+          title: '24h Temperature / Air Pressure History',
+          curveType: 'function',
+          lineWidth: 6,
+          hAxis: {title: 'Past Time'},
+          vAxes: {0: {title: 'Temperature', minValue: -5, maxValue: 35},
+                  1: {title: 'Air Pressure', minValue:900, maxValue: 1100} },
+          series: {0: {targetAxisIndex:0},
+                   1:{targetAxisIndex:1} },
           legend: 'bottom'
         };
         document.getElementById(currentChart + 'canvas').style.display = 'block';
@@ -933,7 +999,8 @@ function setupFCM(publicKey, senderId) {
         if(msgType === 'evtAction') {
             let params = atob(payload.data.params);
             console.log(params);
-            if (clientId === window.localStorage.getItem('clientId')) {
+            if (params.clientId === window.localStorage.getItem('clientId')) {
+                console.log("Received own message - skipping.")
                 return;
             }
             fetch(payload.data.targetUrl, {
@@ -946,6 +1013,7 @@ function setupFCM(publicKey, senderId) {
             })
             .then(function (data) {
                     console.log('Request succeeded with JSON response', data);
+                    addToHistory("action", (new Date()).toLocaleString(), "N/A", "Proxied switch request");
             })
             .catch(function (error) {
                 console.log('Request failed', error);
@@ -1477,6 +1545,41 @@ function restoreHistory() {
     }
 }
 
+function awningCmd(id, cmd) {
+    if(!updateInProgress) {
+        var localId=id
+        var host = "";
+        if(hostMap.hasOwnProperty(id)) {
+            host = hostMap[id];
+            localId = localIdMap[id];
+        }
+        let timeStamp = window.performance.now().toString();
+        let clientId = window.localStorage.getItem('clientId');
+        let accessToken = window.localStorage.getItem('accessToken');
+        const params = { command : cmd, id : localId, host : host, timeStamp : timeStamp, clientId : clientId };
+        console.log(params);
+        var http = new XMLHttpRequest();
+        http.open('POST', url, true);
+        http.setRequestHeader('Content-Type', 'application/json');
+        http.setRequestHeader('fcm', offlineMode? 'yes' : 'no');
+        if(accessToken !== null) {
+            http.setRequestHeader('accessToken', accessToken);
+            http.setRequestHeader('fcmUrl', fcmUrl);
+            http.setRequestHeader('payload', JSON.stringify(params));
+        }
+        http.send(JSON.stringify(params))
+        http.onreadystatechange = function() {
+            if(this.readyState == 4) {
+                if(this.status==202) {
+                    console.log("Request send through FCM");
+                }
+                else {
+                    console.log(this.responseText);
+                }
+            }
+        }
+    }
+}
 
 
 String.prototype.format = function() {
