@@ -93,7 +93,7 @@
 					<br></div>
 				<div id="line_fs20Count"><span><a>FS20 Actors</a><a style="float:right;" id="fs20Count"></a></span>
 					<br></div>
-				<div id="line_netioCount"><<span><a>NetIO230 Actors</a><a style="float:right;" id="netioCount"></a></span>
+				<div id="line_netioCount"><span><a>NetIO230 Actors</a><a style="float:right;" id="netioCount"></a></span>
 					<br></div>
 				<div id="line_ultrasonicCount"><span><a>Ultrasonic</a><a style="float:right;" id="ultrasonicCount"></a></span>
 					<br></div>
@@ -187,40 +187,10 @@
 </div>
 <div id="ultrasonic" style="display:none;">
 <h1 id="txt_13">Ultrasonic</h1>
-	<div id="ultrasonic_1" style="display:none;">
-		<meter id="ultrasonic_1_meter" min="0" max="10" value="5"></meter>
-		<label id="ultrasonic_1_label" class="plainlabel">US</label>
-		<img src="history24.png" width="30px" height="15px" onclick="requestHistory('ultrasonic_1');"/>
-		<div id="ultrasonic_1_chartcanvas" style="display:none;">
-			<hr/>
-			<div id="ultrasonic_1_chart" style="width: 900px; height: 500px" ></div>
-			<button type="button" onclick="hideChartCanvas('ultrasonic_1_chartcanvas')";>Done</button>
-			<hr/>
-		</div>
+	<div id="ultrasonic_container">
+
 	</div>
-	<div id="ultrasonic_2" style="display:none;">
-		<meter id="ultrasonic_2_meter" min="0" max="10" value="5"></meter>
-		<label id="ultrasonic_2_label" class="plainlabel">US</label>
-		<img src="history24.png" width="30px" height="15px" onclick="requestHistory('ultrasonic_2');"/>
-		<div id="ultrasonic_2_chartcanvas" style="display:none;">
-			<hr/>
-			<div id="ultrasonic_2_chart" style="width: 900px; height: 500px" ></div>
-			<button type="button" onclick="hideChartCanvas('ultrasonic_2_chartcanvas')";>Done</button>
-			<hr/>
-		</div>
-	</div>
-	<div id="ultrasonic_3" style="display:none;">
-		<meter id="ultrasonic_3_meter" min="0" max="10" value="5"></meter>
-		<label id="ultrasonic_3_label" class="plainlabel">US</label>
-		<img src="history24.png" width="30px" height="15px" onclick="requestHistory('ultrasonic_3');"/>
-		<div id="ultrasonic_3_chartcanvas" style="display:none;">
-			<hr/>
-			<div id="ultrasonic_3_chart" style="width: 900px; height: 500px" ></div>
-			<button type="button" onclick="hideChartCanvas('ultrasonic_3_chartcanvas')";>Done</button>
-			<hr/>
-		</div>
-	</div>
-    </div>
+</div>
 <div id="temperature" style="display:none;">
 <h1 id="txt_14">Temperatures</h1>
 	<hr/>
@@ -301,6 +271,19 @@
 		</span>
 	</div>
 	<br/>
+</div>
+<div id="ultrasonic_TEMPLATE" style="display:none;">
+	<div id="ultrasonic_ID" style="display:none;">
+		<meter id="ultrasonic_ID_meter" min="0" max="10" value="5"></meter>
+		<label id="ultrasonic_ID_label" class="plainlabel">US</label>
+		<img src="history24.png" width="30px" height="15px" onclick="requestHistory('ultrasonic_ID');"/>
+		<div id="ultrasonic_ID_chartcanvas" style="display:none;">
+			<hr/>
+			<div id="ultrasonic_ID_chart" style="width: 900px; height: 500px" ></div>
+			<button type="button" onclick="hideChartCanvas('ultrasonic_1_chartcanvas')";>Done</button>
+			<hr/>
+		</div>
+	</div>
 </div>
 <div id="sensor_TEMPLATE" style="display:none;">
 	    <div id="sensor_ID" style="display:none;">

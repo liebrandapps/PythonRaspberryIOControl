@@ -60,6 +60,7 @@ if __name__ == '__main__':
         cunoThread = None
     prcApiHandler = PRCApiHandler(ctx)
     prcWebHandler = PRCWebHandler(ctx)
+    ctx.api = prcApiHandler
     s = Server(8020, [prcApiHandler, prcWebHandler, ], ctx.getLogger(), sslConfig=sslConfig)
     s.ownSignalHandler(terminate)
     s.serve()

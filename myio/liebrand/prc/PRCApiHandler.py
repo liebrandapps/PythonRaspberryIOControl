@@ -777,18 +777,26 @@ class PRCApiHandler(Handler):
             result = row[0]
         return result
 
-    def queryCachedPushSensorValue(self, cursor, sensorId):
-        sql = "select value1, value2, atTime from PushSensorShort where sensorId = ? and atTime = (select max(atTime) from PushSensorShort where sensorId = ?)"
+    def queryCachedPushSensorValue(self, cursor, sensorId, returnRaw=False, yesterday=False, hourAgo=False):
+        if yesterday:
+            sql = "select value1, value2, atTime from PushSensorShort where sensorId = ? and atTime = (select max(atTime) from PushSensorShort where sensorId = ? and atTime<(select datetime('now', '-1 day')))"
+        elif hourAgo:
+            sql = "select value1, value2, atTime from PushSensorShort where sensorId = ? and atTime = (select max(atTime) from PushSensorShort where sensorId = ? and atTime<(select datetime('now', '-1 hour')))"
+        else:
+            sql = "select value1, value2, atTime from PushSensorShort where sensorId = ? and atTime = (select max(atTime) from PushSensorShort where sensorId = ?)"
         colValues = [sensorId, sensorId]
         cursor.execute(sql, colValues)
         row = cursor.fetchone()
         result = None
+        rawResult = None
         if row is not None and len(row)>0 and row[0] is not None:
             if row[1] is None:
                 result = str(row[0]) + " | " + str(row[2])
+                rawResult = [row[0], row[2]]
             else:
                 result = str(row[0]) + " | " + str(row[1]) + "|" + str(row[2])
-        return result
+                rawResult = [row[0], row[1], row[2]]
+        return rawResult if returnRaw else result
 
 
     def queryCachedActorStatus(self, cursor, actorId):

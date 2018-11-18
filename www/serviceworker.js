@@ -121,7 +121,6 @@ function postViaFCM(event ) {
     envelope['params'] = btoa(event.request.headers.get('payload'));
     console.log(envelope);
     const message = {message : { topic : "update", data : { envelope: btoa(JSON.stringify(envelope)) } } };
-    console.log(fcmUrl);
     fetch(fcmUrl, {
             method: 'post',
             headers: {

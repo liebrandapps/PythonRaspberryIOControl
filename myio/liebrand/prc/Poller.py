@@ -12,6 +12,7 @@ import time
 
 from datetime import datetime
 import threading
+import humanize
 
 from myio.liebrand.prc.FieldNames import FN
 from myio.liebrand.prc.remote.Camera import IPCamera
@@ -140,6 +141,85 @@ class Poller(threading.Thread):
                     #        combinedDict[k] = json.dumps(combinedDict[k])
                     payload = pn.buildDataMessage(Poller.TOPIC_UPDATE, combinedDict)
                     pn.pushMessageDirect(payload)
+                if self.ctx.rdb.enabled:
+                    accessToken = pn.get_access_token()
+                    self.ctx.rdb.updateToken(accessToken, self.ctx.fcm.url, self.ctx.cfg.general_address)
+
+            if self.ctx.rdb.enabled:
+                ksh300 = self.ctx.ksh300
+                for key in ksh300.keys():
+                    instance = ksh300[key]
+                    if instance.googleActionVerbs is not None:
+                        value = self.ctx.api.queryCachedPushSensorValue(cursor, key, returnRaw=True)
+                        if instance.googleActionResponses is not None:
+                            temperature = value[0]
+                            humidity = value[1]
+                            self.log.debug(value)
+                            # ago will be inaccurate by at max 15 minutes
+                            ago = humanize.naturaltime(now - value[2])
+                            value24 = self.ctx.api.queryCachedPushSensorValue(cursor, key, returnRaw=True, yesterday=True)
+                            temperature24 = value[0]
+                            humidity24 = value[1]
+                            value60 = self.ctx.api.queryCachedPushSensorValue(cursor, key, returnRaw=True, hourAgo=True)
+                            temperature60 = value[0]
+                            humidity60 = value[1]
+                            if temperature > temperature24:
+                                delta24 = temperature - temperature24
+                                delta24Text = self.ctx.rdb.more
+                            else:
+                                delta24 = temperature24 - temperature
+                                delta24Text = self.ctx.rdb.less
+                            if temperature > temperature60:
+                                delta60 = temperature - temperature60
+                                delta60Text = self.ctx.rdb.more
+                            else:
+                                delta60 = temperature60 - temperature
+                                delta60Text = self.ctx.rdb.more
+                            responses = instance.googleActionResponses
+                            ln = len(responses)-1
+
+                        for sensorName in instance.googleActionVerbs:
+                            if instance.googleActionResponses is not None:
+                                idx = 0 if ln == 0 else randint(0, ln)
+                                response = instance.googleActionResponses[idx].format(**locals())
+                            else:
+                                response = None
+                            self.ctx.rdb.updateSensorTH(sensorName, value, response=response)
+                sensor18DS20 = self.ctx.sensor18B20
+                for key in sensor18DS20.keys():
+                    instance = sensor18DS20[key]
+                    if instance.googleActionVerbs is not None:
+                        value = instance.measure()
+                        for sensorName in instance.googleActionVerbs:
+                            self.ctx.rdb.updateSensorT(sensorName, value[1])
+
+                fs20Sensor = self.ctx.fs20Sensor
+                for key in fs20Sensor.keys():
+                    instance = fs20Sensor[key]
+                    if instance.googleActionVerbs is not None:
+                        value = self.ctx.api.queryCachedPushSensorValue(cursor, key, returnRaw=True)
+                        if value is not None:
+                            peerUpdateisNewer = False
+                            if len(instance.peerSensors)>0:
+                                for peerKey in instance.peerSensors:
+                                    peerValue = self.ctx.api.queryCachedPushSensorValue(cursor, key, returnRaw=True)
+                                    if peerValue is not None and peerValue[1] > value[1]:
+                                        peerUpdateisNewer = True
+                                        break
+                            if not peerUpdateisNewer:
+                                ago = humanize.naturaltime(now - value[1])
+                                for sensorName in instance.googleActionVerbs:
+                                    if instance.googleActionResponses is not None and not len(instance.googleActionResponses) == 0:
+                                        ln = len(instance.googleActionResponses)-1
+                                        idx = 0 if ln == 0 else randint(0, ln)
+                                        response = instance.googleActionResponses[idx].format(**locals())
+                                    else:
+                                        response = None
+                                    self.ctx.rdb.updateSensorS(sensorName, instance.entityId, value[0], ago, response)
+                        #self.log.debug(key)
+                        #self.log.debug(value)
+                        #self.log.debug(instance.googleActionResponses)
+
             #sql = "select token from subscriptions"
             #cursor.execute(sql)
             #rows = cursor.fetchall()

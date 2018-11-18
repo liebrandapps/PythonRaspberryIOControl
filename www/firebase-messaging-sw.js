@@ -24,6 +24,7 @@ var messaging = firebase.messaging();
     msgType 'evtUpdate' cumulates the information per serverId
 */
 messaging.setBackgroundMessageHandler(function(payload) {
+    console.log(payload);
     if(payload.data.hasOwnProperty('envelope')) {
         payload.data = JSON.parse(atob(payload.data.envelope));
     }

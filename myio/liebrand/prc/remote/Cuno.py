@@ -1,6 +1,7 @@
 import errno
 import json
 import select
+import sqlite3
 import subprocess
 import tempfile
 import threading
@@ -317,15 +318,24 @@ class Cuno(threading.Thread):
             #self.log.debug("%s %s %s" % (d, tmpValue, md5))
             self.deviceLastEvent[md5] = now
         # save to db
-        now = datetime.now()
-        conn = self.ctx.openDatabase()
-        cursor = conn.cursor()
-        sql = "insert into PushSensorShort(sensorId, value1, value2, atTime) values (?, ?, ?, ?)"
-        colValues = [device.entityId, value1, value2, now]
-        cursor.execute(sql, colValues)
-        conn.commit()
-        cursor.close()
-        self.ctx.closeDatabase(conn)
+        conn = None
+        cursor = None
+        try:
+            now = datetime.now()
+            conn = self.ctx.openDatabase()
+            cursor = conn.cursor()
+            sql = "insert into PushSensorShort(sensorId, value1, value2, atTime) values (?, ?, ?, ?)"
+            colValues = [device.entityId, value1, value2, now]
+            cursor.execute(sql, colValues)
+            conn.commit()
+            cursor.close()
+            self.ctx.closeDatabase(conn)
+        except sqlite3.OperationalError as e:
+            self.log.warn("[CUNO] Cannot write to db: %s" % e)
+            if cursor is not None:
+                cursor.close()
+            if conn is not None:
+                self.ctx.closeDatabase(conn)
 
         # send message
         if not device.disableNotify and self.ctx.fcm.isFCMEnabled:

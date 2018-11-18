@@ -8,22 +8,27 @@ class Entity:
     NAME = "name_%s"
     LOCALE = ["de", "en", "pl"]
 
+
     def __init__(self, cfgDict, cfg):
         self.entityId = cfgDict.keys()[0]
         for l in Entity.LOCALE:
             key = Entity.NAME % l
             cfgDict[self.entityId][key] = ["String", None]
         cfgDict[self.entityId]['shellCmd'] = ["String", None]
-        cfgDict[self.entityId]['disableNotiy'] = ["Boolean", False]
+        cfgDict[self.entityId]['disableNotify'] = ["Boolean", False]
         cfgDict[self.entityId]['prio'] = ["Integer", 0]
         cfgDict[self.entityId]['peerSensors'] = ["Array", None ]
         cfgDict[self.entityId]['ignore'] = ["Array", None ]
+        cfgDict[self.entityId]['googleActionVerbs'] = ["Array", None]
+        cfgDict[self.entityId]['googleActionResponses'] = ["Array", None]
         cfg.addScope(cfgDict)
         self.shellCmd = getattr(cfg, '%s_shellCmd' % self.entityId)
         self.disableNotify = getattr(cfg, '%s_disableNotify' % self.entityId)
         self.prio = getattr(cfg, '%s_prio' % self.entityId)
         self.peerSensors = getattr(cfg, '%s_peerSensors' % self.entityId)
         self.ignore = getattr(cfg, '%s_ignore' % self.entityId)
+        self.googleActionVerbs = getattr(cfg, '%s_googleActionVerbs' % self.entityId)
+        self.googleActionResponses = getattr(cfg, '%s_googleActionResponses' % self.entityId)
         self.name = {}
         for l in Entity.LOCALE:
             key = Entity.NAME % l

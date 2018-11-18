@@ -188,59 +188,55 @@ function initUI() {
                 }
 
                 var html = document.getElementById("switch_TEMPLATE").innerHTML;
+                var parent;
                 for(i=0; i<arrCount[0]; i++) {
-                    reference = "switch_"  + String(i+1);
-                    const parent = document.getElementById((i<8)? "switch_container_left" : "switch_container_right")
-                    parent.innerHTML += html.replace(/switch_ID/g, reference);
+                    parent = document.getElementById((i<8)? "switch_container_left" : "switch_container_right")
+                    parent.innerHTML += html.replace(/switch_ID/g, "switch_"  + String(i+1));
                 }
                 for(i=0; i<arrCount[1]; i++) {
-                    reference = "fs20_"  + String(i+1);
-                    const parent = document.getElementById((i<8)? "fs20_container_left" : "fs20_container_right")
-                    parent.innerHTML += html.replace(/switch_ID/g, reference);
+                    parent = document.getElementById((i<8)? "fs20_container_left" : "fs20_container_right")
+                    parent.innerHTML += html.replace(/switch_ID/g, "fs20_"  + String(i+1));
                 }
                 for(i=0; i<arrCount[4]; i++) {
-                    reference = "netio_"  + String(i+1);
-                    const parent = document.getElementById((i<8)? "netio_container_left" : "netio_container_right")
-                    parent.innerHTML += html.replace(/switch_ID/g, reference);
+                    parent = document.getElementById((i<8)? "netio_container_left" : "netio_container_right")
+                    parent.innerHTML += html.replace(/switch_ID/g, "netio_"  + String(i+1));
+                }
+                html = document.getElementById("ultrasonic_TEMPLATE").innerHTML;
+                parent = document.getElementById("ultrasonic_container" )
+                for(i=0; i<arrCount[2]; i++) {
+                    parent.innerHTML += html.replace(/ultrasonic_ID/g, "ultrasonic_"  + String(i+1));
                 }
                 html = document.getElementById("sensor_TEMPLATE").innerHTML;
                 for(i=0; i<arrCount[3]; i++) {
-                    reference = "temperature_"  + String(i+1);
-                    const parent = document.getElementById((i<8)? "temperature_container_left" : "temperature_container_right")
-                    parent.innerHTML += html.replace(/sensor_ID/g, reference);
+                    parent = document.getElementById((i<8)? "temperature_container_left" : "temperature_container_right")
+                    parent.innerHTML += html.replace(/sensor_ID/g, "temperature_"  + String(i+1));
 
                 }
+                parent = document.getElementById("hms100t_container");
                 for(i=0; i<arrCount[7]; i++) {
-                    reference = "hms100t_"  + String(i+1);
-                    const parent = document.getElementById("hms100t_container");
-                    parent.innerHTML += html.replace(/sensor_ID/g, reference);
+                    parent.innerHTML += html.replace(/sensor_ID/g, "hms100t_"  + String(i+1));
                 }
+                parent = document.getElementById("hms100tf_container");
                 for(i=0; i<arrCount[8]; i++) {
-                    reference = "hms100tf_"  + String(i+1);
-                    const parent = document.getElementById("hms100tf_container");
-                    parent.innerHTML += html.replace(/sensor_ID/g, reference);
+                    parent.innerHTML += html.replace(/sensor_ID/g, "hms100tf_"  + String(i+1));
                 }
+                    parent = document.getElementById("ksh300_container");
                 for(i=0; i<arrCount[9]; i++) {
-                    reference = "ksh300_"  + String(i+1);
-                    const parent = document.getElementById("ksh300_container");
-                    parent.innerHTML += html.replace(/sensor_ID/g, reference);
+                    parent.innerHTML += html.replace(/sensor_ID/g, "ksh300_"  + String(i+1));
                 }
+                parent = document.getElementById("bmp180_container");
                 for(i=0; i<arrCount[11]; i++) {
-                    reference = "bmp180_"  + String(i+1);
-                    const parent = document.getElementById("bmp180_container");
-                    parent.innerHTML += html.replace(/sensor_ID/g, reference);
+                    parent.innerHTML += html.replace(/sensor_ID/g, "bmp180_"  + String(i+1));
                 }
                 html = document.getElementById("fs20Sensor_TEMPLATE").innerHTML;
                 for(i=0; i<arrCount[10]; i++) {
-                    reference = "fs20Sensor_" + String(i+1);
-                    var parent = document.getElementById((i<8)? "fs20Sensor_container_left" : "fs20Sensor_container_right");
-                    parent.innerHTML += html.replace(/fs20Sensor_ID/g, reference);
+                    parent = document.getElementById((i<8)? "fs20Sensor_container_left" : "fs20Sensor_container_right");
+                    parent.innerHTML += html.replace(/fs20Sensor_ID/g, "fs20Sensor_" + String(i+1));
                 }
                 html = document.getElementById("awning_TEMPLATE").innerHTML;
+                parent = document.getElementById("awning_container");
                 for(i=0; i<arrCount[12]; i++) {
-                    reference = "awning_" + String(i+1);
-                    var parent = document.getElementById("awning_container");
-                    parent.innerHTML += html.replace(/awning_ID/g, reference);
+                    parent.innerHTML += html.replace(/awning_ID/g, "awning_" + String(i+1));
                 }
 
                 showArea('about');
@@ -459,35 +455,30 @@ function requestConfig() {
                             pushMap[pushKey] = map;
                         }
                     }
-                    cnt = jsn.ultrasonicCount;
-                    if(cnt==0) {
+                    MAX_ULTRASONIC = jsn.ultrasonicCount;
+                    if(MAX_ULTRASONIC==0) {
                         document.getElementById("ultrasonic").style.display = 'none';
                         document.getElementById("txt_4").style.display = 'none';
                     }
                     else {
                         for(i=0; i<MAX_ULTRASONIC; i++) {
                             reference = "ultrasonic_"  + String(i+1);
-                            if(i<cnt) {
-                                document.getElementById(reference).style.display = 'block';
-                                updateUltrasonic(reference, jsn[reference].name, jsn[reference].value,
-                                            jsn[reference].min, jsn[reference].max, jsn[reference].inverse);
-                                document.getElementById(reference + "_meter").min = jsn[reference].min;
-                                document.getElementById(reference + "_meter").max = jsn[reference].max;
-                                hostMap[reference] = jsn[reference].host;
-                                localIdMap[reference] = jsn[reference].localId;
-                                var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
-                                var map = {};
-                                map['docId'] = reference;
-                                map['docType'] = 'U';
-                                map['name'] = jsn[reference].name;
-                                map['min'] = jsn[reference].min;
-                                map['max'] = jsn[reference].max;
-                                map['inverse'] = jsn[reference].inverse;
-                                pushMap[pushKey] = map;
-                            }
-                            else {
-                                document.getElementById(reference).style.display = 'none';
-                            }
+                            document.getElementById(reference).style.display = 'block';
+                            updateUltrasonic(reference, jsn[reference].name, jsn[reference].value,
+                                  jsn[reference].min, jsn[reference].max, jsn[reference].inverse);
+                            document.getElementById(reference + "_meter").min = jsn[reference].min;
+                            document.getElementById(reference + "_meter").max = jsn[reference].max;
+                            hostMap[reference] = jsn[reference].host
+                            localIdMap[reference] = jsn[reference].localId;
+                            var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
+                            var map = {};
+                            map['docId'] = reference;
+                            map['docType'] = 'U';
+                            map['name'] = jsn[reference].name;
+                            map['min'] = jsn[reference].min;
+                            map['max'] = jsn[reference].max;
+                            map['inverse'] = jsn[reference].inverse;
+                            pushMap[pushKey] = map;
                         }
                     }
                     MAX_TEMPERATURE = jsn.temperatureCount;
@@ -586,8 +577,6 @@ function requestConfig() {
                         var html = document.getElementById("fs20Sensor_TEMPLATE").innerHTML;
                         for(i=0; i<MAX_FS20SENSOR; i++) {
                             reference = "fs20Sensor_" + String(i+1);
-                            var parent = document.getElementById((i<8)? "fs20Sensor_container_left" : "fs20Sensor_container_right")
-                            parent.innerHTML += html.replace(/fs20Sensor_ID/g, reference);
                             document.getElementById(reference).style.display = 'block';
                             document.getElementById(reference + "_label").innerHTML = jsn[reference].name
                             document.getElementById(reference + "_value").innerHTML = jsn[reference].value
@@ -990,6 +979,7 @@ function setupFCM(publicKey, senderId) {
 
 
     messaging.onMessage(function(payload) {
+        console.log(payload);
         if(payload.data.hasOwnProperty('envelope')) {
             payload.data = JSON.parse(atob(payload.data.envelope));
         }

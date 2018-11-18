@@ -11,6 +11,7 @@ from myio.liebrand.prc.Entity import Switch, FS20, UltraSonic, Sensor18B20, Neti
     FS20Sensor, Peer, Camera, RpiCam, BMP180, Awning
 from myio.liebrand.prc.Sens18B20 import Sens18B20Wrapper
 from myio.liebrand.prc.config import Config
+from myio.liebrand.prc.firebase.RealtimeDB import RealtimeDB
 from myio.liebrand.prc.fs20 import Fs20Wrapper
 from myio.liebrand.prc.i2c import i2cWrapper
 from myio.liebrand.prc.local.Awning import AwningWrapper
@@ -60,6 +61,8 @@ class Context:
         self.fcm = PushNotification(self)
         self.api = None
         self.setupDevices()
+        self.rdb = RealtimeDB(self)
+        self.api = None
 
     def getStatus(self):
         return [self.cfgOk, self.logOk, self.dbOk]
