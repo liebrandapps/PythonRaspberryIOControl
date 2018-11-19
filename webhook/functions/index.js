@@ -82,4 +82,103 @@ app.intent('outsideLights', (conv, {turn}) => {
 
 });
 
+app.intent('showVideo', (conv, {cameraId, televisionId}) => {
+    var request = require('request-promise');
+    console.log('version 13');
+    return admin.database().ref('prc').once('value').then( (snapshot) => {
+        return Promise.resolve(snapshot.val());
+    }).then( (data) => {
+        let camId="";
+        if (cameraId.toUpperCase().includes("CAT")) {
+            camId = data.cam_cat;
+        }
+        if (cameraId.toUpperCase().includes("OUTSIDE")) {
+            camId = data.cam_outside;
+        }
+        let clientId = "googleAction -> showVideo";
+        let timeStamp = new Date().getTime().toString();
+        const params = { command : "playTimelapseVideo", id : camId, host : data.host,
+                        castName : televisionId,
+                        timeStamp : timeStamp, clientId : clientId };
+        let fcmUrl = data.fcmUrl;
+        let accessToken = data.fcmToken;
+        var envelope = {};
+        envelope['msgType'] = "evtAction";
+        envelope['targetUrl'] = data.host;
+        envelope['params'] = Buffer.from(JSON.stringify(params)).toString('base64');
+        console.log(envelope);
+        const message = {message : { topic : "update", data : { envelope : Buffer.from(JSON.stringify(envelope)).toString('base64') } } };
+        var options = {
+            method: 'POST',
+            uri: fcmUrl,
+            headers: {
+                    "Content-type": "application/json",
+                    'Authorization': 'Bearer ' + accessToken
+                },
+            body: message,
+            json: true // Automatically stringifies the body to JSON
+        };
+        return Promise.resolve(request(options))
+    }).then( (data) => {
+            console.log(data);
+            return conv.close("Ok, requesting to play time lapse video on TV " + televisionId);
+            //return Promise.resolve();
+    }).catch( (error) => {
+                console.log('Request failed', error);
+                return conv.close("Oops, that did not work.");
+                //return Promise.reject(error);
+    });
+
+});
+
+app.intent('showSnapshot', (conv, {cameraId, televisionId}) => {
+    var request = require('request-promise');
+    console.log('version 13');
+    return admin.database().ref('prc').once('value').then( (snapshot) => {
+        return Promise.resolve(snapshot.val());
+    }).then( (data) => {
+        let camId="";
+        if (cameraId.toUpperCase().includes("CAT")) {
+            camId = data.cam_cat;
+        }
+        if (cameraId.toUpperCase().includes("OUTSIDE")) {
+            camId = data.cam_outside;
+        }
+        let clientId = "googleAction -> showSnapshot";
+        let timeStamp = new Date().getTime().toString();
+        const params = { command : "showSnapshot", id : camId, host : data.host,
+                        castName : televisionId,
+                        timeStamp : timeStamp, clientId : clientId };
+        let fcmUrl = data.fcmUrl;
+        let accessToken = data.fcmToken;
+        var envelope = {};
+        envelope['msgType'] = "evtAction";
+        envelope['targetUrl'] = data.host;
+        envelope['params'] = Buffer.from(JSON.stringify(params)).toString('base64');
+        console.log(envelope);
+        const message = {message : { topic : "update", data : { envelope : Buffer.from(JSON.stringify(envelope)).toString('base64') } } };
+        var options = {
+            method: 'POST',
+            uri: fcmUrl,
+            headers: {
+                    "Content-type": "application/json",
+                    'Authorization': 'Bearer ' + accessToken
+                },
+            body: message,
+            json: true // Automatically stringifies the body to JSON
+        };
+        return Promise.resolve(request(options))
+    }).then( (data) => {
+            console.log(data);
+            return conv.close("Ok, requesting to show camera snapshot video on " + televisionId + " TV.") ;
+            //return Promise.resolve();
+    }).catch( (error) => {
+                console.log('Request failed', error);
+                return conv.close("Oops, that did not work.");
+                //return Promise.reject(error);
+    });
+
+});
+
+
 exports.PythonRaspberryControl = functions.https.onRequest(app);

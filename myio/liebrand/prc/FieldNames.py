@@ -11,6 +11,7 @@ class FN:
     FLD_CAMERACOUNT = "cameraCount"
     FLD_CANSTREAM = "canStream"
     FLD_CANTIMELAPSE = "canTimelapse"
+    FLD_CASTNAME = "castName"
     FLD_CLIENTID ="clientId"
     FLD_CMD = "command"
     FLD_DATA = "data"
@@ -70,6 +71,8 @@ class FN:
     CMD_IN = "awningDriveIn"
     CMD_OUT = "awningDriveOut"
     CMD_STOP = "awningDriveStop"
+    CMD_PLAYTLVIDEO = "playTimelapseVideo"
+    CMD_SHOWSNAPSHOT = "showSnapshot"
     FLAG_ROAMING = "roaming"
 
     ok = "ok"

@@ -23,11 +23,7 @@ from myio.liebrand.prc.Entity import Entity, FS20, UltraSonic, Sensor18B20, Swit
     FS20Sensor, Camera, RpiCam, BMP180, Awning
 from myio.liebrand.prc.FieldNames import FN
 from myio.liebrand.prc.config import Config
-
-
-
-
-
+from myio.liebrand.prc.remote.ChromeCast import ChromeCast
 
 
 class PRCApiHandler(Handler):
@@ -66,6 +62,7 @@ class PRCApiHandler(Handler):
 
         self.startTime = datetime.datetime.now()
         self.sslCert = self.cfg.general_clientCertFile
+        self.timeStamps = []
 
 
     def endPoint(self):
@@ -89,10 +86,23 @@ class PRCApiHandler(Handler):
         else:
             proto = "http"
         host = proto + "://" + headers["host"] + self.endPoint()[0]
-        fields = json.loads(body)
         dct = {}
         resultHeaders = {}
         resultCode = 500
+        fields = json.loads(body)
+
+        if FN.FLD_TIMESTAMP in fields:
+            if fields[FN.FLD_TIMESTAMP] in self.timeStamps:
+                resultCode = 200
+                resultHeaders['Content-Type'] = "application/json"
+                dct[FN.FLD_STATUS] = FN.ok
+                dct[FN.FLD_MESSAGE] = "duplicate request"
+                return [resultCode, resultHeaders, body]
+            else:
+                self.timeStamps.append(fields[FN.FLD_TIMESTAMP])
+                while len(self.timeStamps)>10:
+                    self.timeStamps.pop(0)
+
         if FN.FLD_CMD in fields:
             if fields[FN.FLD_CMD] == FN.CMD_CONFIG:
                 resultCode, dct = self.cmdConfig(fields, dct, host)
@@ -118,6 +128,10 @@ class PRCApiHandler(Handler):
                 resultCode, dct = self.cmdSnapshot(fields, dct, host)
             elif fields[FN.FLD_CMD].startswith('awning'):
                 resultCode, dct = self.cmdAwning(fields, dct, host)
+            elif fields[FN.FLD_CMD] == FN.CMD_PLAYTLVIDEO:
+                resultCode, dct = self.cmdPlayTLVideo(fields, dct, host)
+            elif fields[FN.FLD_CMD] == FN.CMD_SHOWSNAPSHOT:
+                resultCode, dct = self.cmdShowSnapshot(fields, dct, host)
             else:
                 resultCode = 400
                 dct[FN.FLD_STATUS] = FN.fail
@@ -699,9 +713,101 @@ class PRCApiHandler(Handler):
         else:
             resultCode = 500
             dct[FN.FLD_STATUS] = FN.fail
-            dct[FN.FLD_MESSAGE] = "Missing field in JSON (%s &| %s)" % (FN.FLD_ID,
+            dct[FN.FLD_MESSAGE] = "Missing field(s) in JSON (%s &| %s)" % (FN.FLD_ID,
                                                                         FN.FLD_HOST)
         return [resultCode, dct]
+
+    def cmdPlayTLVideo(self, fields, dct, host):
+        if FN.FLD_CASTNAME in fields and FN.FLD_ID in fields and FN.FLD_HOST in fields:
+            targetHost = fields[FN.FLD_HOST]
+            if host == targetHost:
+                if fields[FN.FLD_ID].startswith('camera'):
+                    instance = self.camera[fields[FN.FLD_ID]]
+                else:
+                    instance = self.rpiCam[fields[FN.FLD_ID]]
+                if instance.timelapseEnabled:
+                    friendlyName = None
+                    for ce in self.ctx.chromeCast.keys():
+                        ceO = self.ctx.chromeCast[ce]
+                        if ceO.callName.upper() in fields[FN.FLD_CASTNAME].upper():
+                            friendlyName = ceO.friendlyName
+                            break
+                    if friendlyName is None:
+                        resultCode = 500
+                        dct[FN.FLD_STATUS] = FN.fail
+                        dct[FN.FLD_MESSAGE] = "Could not match cast name %s to any configured device" % fields[FN.FLD_CASTNAME]
+                        self.log.error(dct[FN.FLD_MESSAGE])
+                    else:
+                        mediaUrl = self.ctx.cfg.general_addressNoSSL + '/' + basename(instance.timelapseMP4)
+
+                        cc = ChromeCast()
+                        cc.log = self.log
+                        cc.mediaUrl = mediaUrl
+                        cc.mediaType = ChromeCast.MEDIATYPE_MP4
+                        cc.friendlyName = friendlyName
+                        cc.start()
+                        resultCode = 200
+                        dct[FN.FLD_STATUS] = FN.ok
+                else:
+                    resultCode = 500
+                    dct[FN.FLD_STATUS] = FN.fail
+                    dct[FN.FLD_MESSAGE] = "Camera not configured for timelapse video"
+                    self.log.error(dct[FN.FLD_MESSAGE])
+            else:
+                # remote camera
+                r = requests.post(targetHost, json=fields, verify=self.sslCert)
+                if r.status_code == 200:
+                    dct = json.loads(r.text)
+            resultCode = 200
+        else:
+            resultCode = 500
+            dct[FN.FLD_STATUS] = FN.fail
+            dct[FN.FLD_MESSAGE] = "Missing field(s) in JSON (%s &| %s &| %s)" % (FN.FLD_ID,
+                                                                        FN.FLD_HOST, FN.FLD_CASTNAME)
+        return [resultCode, dct]
+
+    def cmdShowSnapshot(self, fields, dct, host):
+        if FN.FLD_CASTNAME in fields and FN.FLD_ID in fields and FN.FLD_HOST in fields:
+            targetHost = fields[FN.FLD_HOST]
+            if host == targetHost:
+                if fields[FN.FLD_ID].startswith('camera'):
+                    instance = self.camera[fields[FN.FLD_ID]]
+                    mediaUrl = instance.snapshotAddress
+                    mediaType = ChromeCast.MEDIATYPE_JPEG
+                friendlyName = None
+                for ce in self.ctx.chromeCast.keys():
+                    ceO = self.ctx.chromeCast[ce]
+                    if ceO.callName.upper() in fields[FN.FLD_CASTNAME].upper():
+                        friendlyName = ceO.friendlyName
+                        break
+                if friendlyName is None:
+                    resultCode = 500
+                    dct[FN.FLD_STATUS] = FN.fail
+                    dct[FN.FLD_MESSAGE] = "Could not match cast name %s to any configured device" % fields[FN.FLD_CASTNAME]
+                    self.log.error(dct[FN.FLD_MESSAGE])
+                else:
+                    cc = ChromeCast()
+                    cc.log = self.log
+                    cc.mediaUrl = mediaUrl
+                    cc.mediaType = mediaType
+                    cc.friendlyName = friendlyName
+                    cc.timeout = 20
+                    cc.start()
+                    resultCode = 200
+                    dct[FN.FLD_STATUS] = FN.ok
+            else:
+                # remote camera
+                r = requests.post(targetHost, json=fields, verify=self.sslCert)
+                if r.status_code == 200:
+                    dct = json.loads(r.text)
+            resultCode = 200
+        else:
+            resultCode = 500
+            dct[FN.FLD_STATUS] = FN.fail
+            dct[FN.FLD_MESSAGE] = "Missing field(s) in JSON (%s &| %s &| %s)" % (FN.FLD_ID,
+                                                                        FN.FLD_HOST, FN.FLD_CASTNAME)
+        return [resultCode, dct]
+
 
     def requestPeerConfig(self, address, locale):
         resultDct = None

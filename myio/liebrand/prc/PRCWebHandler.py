@@ -51,7 +51,7 @@ class PRCWebHandler(Handler):
             else:
                 self.log.error("Could not find www file %s" % (path))
                 resultCode = 500
-
+        resultHeaders['Connection'] = 'close'
         return [resultCode, resultHeaders, body]
 
     def doPOST(self, path, headers, body):

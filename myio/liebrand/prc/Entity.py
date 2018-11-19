@@ -327,3 +327,18 @@ class Awning(Entity):
         }
         Entity.__init__(self, cfgDict, cfg)
         self.address = getattr(cfg, '%s_address' % self.entityId)
+
+class ChromeCast(Entity):
+
+    SECTION = "chromeCast_%d"
+
+    def __init__(self, index, cfg):
+        cfgDict = {
+            ChromeCast.SECTION % index: {
+                "friendlyName": ["String", ],
+                "callName": ["String",]
+            }
+        }
+        Entity.__init__(self, cfgDict, cfg)
+        self.friendlyName = getattr(cfg, '%s_friendlyName' % self.entityId)
+        self.callName = getattr(cfg, '%s_callName' % self.entityId)

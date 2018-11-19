@@ -8,7 +8,7 @@ from os.path import join, exists, dirname, isdir
 from os import access, W_OK, R_OK
 
 from myio.liebrand.prc.Entity import Switch, FS20, UltraSonic, Sensor18B20, Netio230, HMS100T, HMS100TF, KSH300, \
-    FS20Sensor, Peer, Camera, RpiCam, BMP180, Awning
+    FS20Sensor, Peer, Camera, RpiCam, BMP180, Awning, ChromeCast
 from myio.liebrand.prc.Sens18B20 import Sens18B20Wrapper
 from myio.liebrand.prc.config import Config
 from myio.liebrand.prc.firebase.RealtimeDB import RealtimeDB
@@ -58,6 +58,7 @@ class Context:
         self.rpiCam = {}
         self.bmp180 = {}
         self.awning = {}
+        self.chromeCast ={}
         self.fcm = PushNotification(self)
         self.api = None
         self.setupDevices()
@@ -166,6 +167,8 @@ class Context:
         rpiCamCount = self.cfg.general_rpiCam
         bmp180Count = self.cfg.general_bmp180
         awningCount = self.cfg.general_awningCount
+        chromeCastCount = self.cfg.general_chromeCastCount
+
         self.cfg.setSection(Config.SECTIONS[Config.GENERAL])
 
 
@@ -249,5 +252,8 @@ class Context:
                 o.wrapper = awningWrapper
                 self.awning[o.entityId] = o
 
-
+        if chromeCastCount>0:
+            for index in range(chromeCastCount):
+                o = ChromeCast(index+1, self.cfg)
+                self.chromeCast[o.entityId] = o
 

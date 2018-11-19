@@ -33,7 +33,9 @@ if __name__ == '__main__':
             'rpiCam': ["Integer", 0],
             'bmp180': ["Integer", 0],
             'awningCount': ["Integer", 0],
+            'chromeCastCount': ['Integer', 0],
             'address' : ["String", ],
+            'addressNoSSL': ["String", ],
             'peerBackup' : ["Array", ]
         }
     }
@@ -62,6 +64,8 @@ if __name__ == '__main__':
     prcWebHandler = PRCWebHandler(ctx)
     ctx.api = prcApiHandler
     s = Server(8020, [prcApiHandler, prcWebHandler, ], ctx.getLogger(), sslConfig=sslConfig)
+    #serve http on 8019
+    s.additionalHosts = {8019: [prcWebHandler, ]}
     s.ownSignalHandler(terminate)
     s.serve()
 
