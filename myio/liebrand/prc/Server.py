@@ -4,6 +4,7 @@ import sys
 
 from myio.liebrand.phd.server import Daemon, Server
 from myio.liebrand.prc.Context import Context
+from myio.liebrand.prc.local.Kerui import KeruiWrapper
 from myio.liebrand.prc.PRCWebHandler import PRCWebHandler
 from myio.liebrand.prc.PRCApiHandler import PRCApiHandler
 from myio.liebrand.prc.Poller import Poller
@@ -15,6 +16,8 @@ def terminate(sigNo, stackFrame):
         pollerThread.doTerminate()
     if cunoThread is not None:
         cunoThread.doTerminate()
+    if keruiThread is not None:
+        keruiThread.doTerminate()
 
 if __name__ == '__main__':
     pollerThread = None
@@ -34,6 +37,7 @@ if __name__ == '__main__':
             'bmp180': ["Integer", 0],
             'awningCount': ["Integer", 0],
             'chromeCastCount': ['Integer', 0],
+            'keruiCount': ['Integer', 0],
             'address' : ["String", ],
             'addressNoSSL': ["String", ],
             'peerBackup' : ["Array", ]
@@ -60,6 +64,11 @@ if __name__ == '__main__':
             ctx.fs20[k].wrapper.cuno=cunoThread
     else:
         cunoThread = None
+    if len(ctx.kerui)>0:
+        keruiThread = KeruiWrapper(ctx)
+        keruiThread.start()
+    else:
+        keruiThread = None
     prcApiHandler = PRCApiHandler(ctx)
     prcWebHandler = PRCWebHandler(ctx)
     ctx.api = prcApiHandler

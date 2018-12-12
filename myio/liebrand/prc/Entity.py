@@ -342,3 +342,16 @@ class ChromeCast(Entity):
         Entity.__init__(self, cfgDict, cfg)
         self.friendlyName = getattr(cfg, '%s_friendlyName' % self.entityId)
         self.callName = getattr(cfg, '%s_callName' % self.entityId)
+
+class Kerui(Entity):
+
+    SECTION = "kerui_%d"
+
+    def __init__(self, index, cfg):
+        cfgDict = {
+            Kerui.SECTION % index: {
+                "address" : ["String", ]
+            }
+        }
+        Entity.__init__(self, cfgDict, cfg)
+        self.address = getattr(cfg, '%s_address' % self.entityId)

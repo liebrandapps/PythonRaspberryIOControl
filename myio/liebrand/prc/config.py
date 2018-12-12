@@ -29,7 +29,10 @@ class Config:
 
     def addScope(self, dictionary):
         for key in dictionary.keys():
-            self.scope[key] = dictionary[key]
+            if key in self.scope.keys():
+                self.scope[key].update(dictionary[key])
+            else:
+                self.scope[key] = dictionary[key]
 
     def hasKey(self, dct, key):
         k = key.upper()

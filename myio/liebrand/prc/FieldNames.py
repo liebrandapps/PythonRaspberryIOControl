@@ -73,6 +73,7 @@ class FN:
     CMD_STOP = "awningDriveStop"
     CMD_PLAYTLVIDEO = "playTimelapseVideo"
     CMD_SHOWSNAPSHOT = "showSnapshot"
+    CMD_RUNSHELLCMD = "runShellCmd"
     FLAG_ROAMING = "roaming"
 
     ok = "ok"

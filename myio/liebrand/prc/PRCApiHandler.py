@@ -1,5 +1,6 @@
 import base64
 import hashlib
+import subprocess
 import tempfile
 from os.path import basename
 from zipfile import ZipFile
@@ -132,6 +133,8 @@ class PRCApiHandler(Handler):
                 resultCode, dct = self.cmdPlayTLVideo(fields, dct, host)
             elif fields[FN.FLD_CMD] == FN.CMD_SHOWSNAPSHOT:
                 resultCode, dct = self.cmdShowSnapshot(fields, dct, host)
+            elif fields[FN.FLD_CMD] == FN.CMD_RUNSHELLCMD:
+                resultCode, dct = self.cmdShellCmd(fields, dct, host)
             else:
                 resultCode = 400
                 dct[FN.FLD_STATUS] = FN.fail
@@ -806,6 +809,62 @@ class PRCApiHandler(Handler):
             dct[FN.FLD_STATUS] = FN.fail
             dct[FN.FLD_MESSAGE] = "Missing field(s) in JSON (%s &| %s &| %s)" % (FN.FLD_ID,
                                                                         FN.FLD_HOST, FN.FLD_CASTNAME)
+        return [resultCode, dct]
+
+    def cmdShellCmd(self, fields, dct, host):
+        if FN.FLD_ID in fields and FN.FLD_HOST in fields:
+            targetHost = fields[FN.FLD_HOST]
+            if host == targetHost:
+                shellCmdId = fields[FN.FLD_ID]
+                shellCmd = self.ctx.shellCmds[shellCmdId]
+                if shellCmd is None:
+                    resultCode = 500
+                    dct[FN.FLD_STATUS] = FN.fail
+                    dct[FN.FLD_MESSAGE] = "Invalid ShellCmd specified: %s" % shellCmdId
+                    self.log.error(dct[FN.FLD_MESSAGE])
+                else:
+                    params = {}
+                    if FN.FLD_VALUE in fields:
+                        params['value'] = fields[FN.FLD_VALUE]
+                    params['clientCertFile'] = self.cfg.general.clientCertFile
+                    params['address'] = self.cfg.general.address
+                    params['lastEvent'] = 100
+                    for entity in shellCmd[1:]:
+                        if entity.startswith('peer_'):
+                            if entity in self.ctx.peer:
+                                params[entity] = self.ctx.peer[entity].roamingAddress
+                        elif entity in self.ctx.switch or entity in self.ctx.fs20 or entity in self.ctx.netio230:
+                            fields2 = { 'id' : entity, 'host' : self.cfg.general.address }
+                            dct2 = {}
+                            self.ctx.api.cmdStatus(fields2, dct2, self.cfg.general.address)
+                            params[entity] = dct2[entity]['status']
+                        else:
+                            self.log.warn("[API] Could not resolve parameter %s for shell command of shell cmd id %s" %
+                                        (entity, shellCmdId))
+                    fd, path = tempfile.mkstemp()
+                    with os.fdopen(fd, 'w') as tmpFile:
+                        tmpFile.write(json.dumps(params))
+                    try:
+                        p = subprocess.Popen([shellCmd[0], path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        time.sleep(3)
+                        outStrg, errStrg = p.communicate()
+                        if len(outStrg) > 0:
+                            self.log.debug("CMD [%s] stdout: %s" % (shellCmd[0], outStrg))
+                        if len(errStrg) > 0:
+                            self.log.error(("CMD [%s] stderr: %s" % (shellCmd[0], errStrg)))
+                    except Exception, e:
+                        self.log.error("[API] Error executing shell command %s: Reason %s" % (shellCmd[0], e))
+            else:
+                # remote shell cmd
+                r = requests.post(targetHost, json=fields, verify=self.sslCert)
+                if r.status_code == 200:
+                    dct = json.loads(r.text)
+            resultCode = 200
+        else:
+            resultCode = 500
+            dct[FN.FLD_STATUS] = FN.fail
+            dct[FN.FLD_MESSAGE] = "Missing field(s) in JSON (%s &| %s)" % (FN.FLD_ID,
+                                                                        FN.FLD_HOST)
         return [resultCode, dct]
 
 

@@ -48,6 +48,7 @@ class Cuno(threading.Thread):
         self.log = ctx.getLogger()
         self.cfg = ctx.getConfig()
         self.pushNotify = ctx.getPushNotify()
+        self.sensorDataHandler = ctx.sdh
         self.cfg.addScope(Cuno.cfgDict)
         self.enabled = self.cfg.cuno.enable
         if not self.enabled:
@@ -65,9 +66,7 @@ class Cuno(threading.Thread):
         self.cmdQueue = []
         self.isRunning = False
         self.unknownDevices = []
-        self.shellCmdInProgress = {}
-        self.shellCmdLastEvent = {}
-        self.deviceLastEvent = {}
+
         self.sensorAddress = {}
         hms100t = ctx.hms100t
         for key in hms100t.keys():
@@ -84,10 +83,6 @@ class Cuno(threading.Thread):
 
 
 
-    # ok - we run the telnet client with a timeout of 4 seconds,
-    # it means we must wait for a shut down at max 4 seconds.
-    # we query the device 900 times per hour then
-    # we want to reconnect once per hour
     def run(self):
         if not self.enabled:
             self.log.info("[CUNO] CUNO Client disabled")
@@ -97,7 +92,7 @@ class Cuno(threading.Thread):
         reConCount = 1
         tn = None
         lastCmdSend = datetime.now()
-        while (not (self.terminate)):
+        while not (self.terminate):
             reConCount = reConCount - 1
             if reConCount == 0:
                 waitTime = 20
@@ -126,23 +121,8 @@ class Cuno(threading.Thread):
                     self.terminate = True
                     continue
             # check for leftover shell cmds
-            for pid in self.shellCmdInProgress.keys():
-                if self.shellCmdInProgress[pid][1].poll() is None:
-                    outStrg, errStrg = self.shellCmdInProgress[pid][1].communicate()
-                    if len(outStrg) > 0:
-                        self.log.debug("CMD [%s] stdout: %s" % (self.shellCmdInProgress[pid][2], outStrg))
-                    if len(errStrg) > 0:
-                        self.log.error(("CMD [%s] stderr: %s" % (self.shellCmdInProgress[pid][2], errStrg)))
-                    del self.shellCmdInProgress[pid]
-                else:
-                    now = datetime.now()
-                    runtime = (now-self.shellCmdInProgress[pid][0]).seconds
-                    if runtime > 30:
-                        self.log.warn("[CUNO] Process with pid %d is running since %d seconds"
-                                      % (pid, runtime))
-                    if runtime > 45:
-                        # give up
-                        del self.shellCmdInProgress[pid]
+            self.sensorDataHandler.checkForLeftOverProcesses()
+
             #
             try:
                 fds = [tn.fileno(), self.controlPipe[0]]
@@ -219,7 +199,7 @@ class Cuno(threading.Thread):
                 return
             if (deviceType + ':' + address) in self.sensorAddress:
                 device = self.sensorAddress[deviceType + ':' + address]
-                self.process(device, temp)
+                self.sensorDataHandler.process(device, temp)
                 self.log.debug("[CUNO] %s [%s] %s { %s }" % (device.getName("en"), deviceType, devSpec, x))
             else:
                 if not(address in self.unknownDevices):
@@ -239,7 +219,7 @@ class Cuno(threading.Thread):
                 return
             if (deviceType + ':' + address) in self.sensorAddress:
                 device = self.sensorAddress[deviceType + ':' + address]
-                self.process(device, temp, value2=humidity)
+                self.sensorDataHandler.process(device, temp, value2=humidity)
                 self.log.debug("[CUNO] %s [%s] %s { %s }" % (device.getName("en"), deviceType, devSpec, x))
             else:
                 if not(address in self.unknownDevices):
@@ -259,7 +239,7 @@ class Cuno(threading.Thread):
             devSpec = str(temp) + " Grad, " + str(humidity) + "%"
             if (deviceType + ':' + address) in self.sensorAddress:
                 device = self.sensorAddress[deviceType + ':' + address]
-                self.process(device, temp, value2=humidity)
+                self.sensorDataHandler.process(device, temp, value2=humidity)
                 self.log.debug("[CUNO] %s [%s] %s { %s }" % (device.getName("en"), deviceType, devSpec, x))
             else:
                 if not (address in self.unknownDevices):
@@ -278,7 +258,7 @@ class Cuno(threading.Thread):
                 devSpec = "on"
             if (deviceType + ':' + address) in self.sensorAddress:
                 device = self.sensorAddress[deviceType + ':' + address]
-                self.process(device, devSpec)
+                self.sensorDataHandler.process(device, devSpec)
                 self.log.debug("[CUNO] %s [%s] %s { %s }" % (device.getName("en"), deviceType, devSpec, x))
             else:
                 if not (address in self.unknownDevices):
@@ -288,105 +268,6 @@ class Cuno(threading.Thread):
         if not handled:
             self.log.debug("[CUNO] Unhandled device message {x}" % x)
 
-
-    #
-    # handle the incoming sensor data:
-    # + save in database
-    # + send message
-    # + trigger script
-    #
-    def process(self, device, value1, value2=None):
-        now =datetime.now()
-        tmpValue = str(value1)
-        if tmpValue in device.ignore:
-            return
-        if value2 is not None:
-            tmpValue = "%s | %s" % (str(value1), str(value2))
-        m = hashlib.md5()
-        m.update(device.entityId + tmpValue)
-        md5 = m.hexdigest()
-        #self.log.debug("%s %s %s" % (device.getId(), tmpValue, md5))
-        #self.log.debug(self.deviceLastEvent)
-        if md5 in self.deviceLastEvent and (now - self.deviceLastEvent[md5]).seconds < 15:
-            return
-        self.deviceLastEvent[md5] = now
-        #self.log.debug(device.peerSensors)
-        for d in device.peerSensors:
-            m = hashlib.md5()
-            m.update(d + tmpValue)
-            md5 = m.hexdigest()
-            #self.log.debug("%s %s %s" % (d, tmpValue, md5))
-            self.deviceLastEvent[md5] = now
-        # save to db
-        conn = None
-        cursor = None
-        try:
-            now = datetime.now()
-            conn = self.ctx.openDatabase()
-            cursor = conn.cursor()
-            sql = "insert into PushSensorShort(sensorId, value1, value2, atTime) values (?, ?, ?, ?)"
-            colValues = [device.entityId, value1, value2, now]
-            cursor.execute(sql, colValues)
-            conn.commit()
-            cursor.close()
-            self.ctx.closeDatabase(conn)
-        except sqlite3.OperationalError as e:
-            self.log.warn("[CUNO] Cannot write to db: %s" % e)
-            if cursor is not None:
-                cursor.close()
-            if conn is not None:
-                self.ctx.closeDatabase(conn)
-
-        # send message
-        if not device.disableNotify and self.ctx.fcm.isFCMEnabled:
-            message = {}
-            message[device.entityId] = {FN.FLD_VALUE : tmpValue,
-                                    FN.FLD_TIMESTAMP : str(int(time.time() * 1000)),
-                                    FN.FLD_CMD : "cuno"}
-            message[Cuno.KEY_SERVERID] = self.serverId
-            message[Cuno.KEY_MSGTYPE] = "evtUpdate"
-            payload = self.pushNotify.buildDataMessage(Cuno.TOPIC_UPDATE, message)
-            if device.prio > 1:
-                self.pushNotify.addNotificationtoMessage(payload, device.getName('en'), "")
-            self.pushNotify.pushMessage(payload, device.prio)
-
-        # trigger script
-        shellCmd = device.shellCmd
-        if shellCmd is not None:
-            shellCmd = shellCmd.split(':')
-            m = hashlib.md5()
-            m.update(shellCmd[0])
-            md5=m.hexdigest()
-            if md5 in self.shellCmdLastEvent:
-                lastEvent = (now - self.shellCmdLastEvent[md5]).seconds
-            else:
-                lastEvent = 0
-            self.shellCmdLastEvent[md5] = now
-            params = {}
-            params[device.entityId] = tmpValue
-            params['lastEvent'] = lastEvent
-            params['clientCertFile'] = self.cfg.general.clientCertFile
-            params['address'] = self.cfg.general.address
-            for entity in shellCmd[1:]:
-                if entity.startswith('peer_'):
-                    if entity in self.ctx.peer:
-                        params[entity] = self.ctx.peer[entity].roamingAddress
-                elif entity in self.ctx.switch or entity in self.ctx.fs20 or entity in self.ctx.netio230:
-                    fields = { 'id' : entity, 'host' : self.cfg.general.address }
-                    dct = {}
-                    self.ctx.api.cmdStatus(fields, dct, self.cfg.general.address)
-                    params[entity] = dct[entity]['status']
-                else:
-                    self.log.warn("[CUNO] Could not resolve parameter %s for shell command of device %s" %
-                                      (entity, device.getId()))
-            fd, path = tempfile.mkstemp()
-            with os.fdopen(fd, 'w') as tmpFile:
-                tmpFile.write(json.dumps(params))
-            try:
-                p = subprocess.Popen([shellCmd[0], path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                self.shellCmdInProgress[p.pid] = [ datetime.now(), p, shellCmd ]
-            except Exception, e:
-                self.log.error("[CUNO] Error executing shell command %s: Reason %s" % (shellCmd, e))
 
 
     def doTerminate(self):

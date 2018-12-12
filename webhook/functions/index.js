@@ -46,6 +46,12 @@ app.intent('outsideLights', (conv, {turn}) => {
         return Promise.resolve(snapshot.val());
     }).then( (data) => {
         let switchId = data.outsideLights;
+        if(turn.includes('on')) {
+            turn = 'on';
+        }
+        if(turn.includes('off')) {
+            turn = 'off';
+        }
         let value = turn;
         let clientId = "googleAction";
         let timeStamp = new Date().getTime().toString();
@@ -178,6 +184,55 @@ app.intent('showSnapshot', (conv, {cameraId, televisionId}) => {
                 //return Promise.reject(error);
     });
 
+});
+
+
+function runShellCmd(conv, shellCmd, value) {
+    var request = require('request-promise');
+    console.log('version 14');
+    return admin.database().ref('prc').once('value').then( (snapshot) => {
+        return Promise.resolve(snapshot.val());
+    }).then( (data) => {
+        let clientId = "googleAction -> shellCmd";
+        let timeStamp = new Date().getTime().toString();
+        const params = { command : "runShellCmd", id : shellCmd, value : value, host : data.host,
+                        timeStamp : timeStamp, clientId : clientId };
+        let fcmUrl = data.fcmUrl;
+        let accessToken = data.fcmToken;
+        var envelope = {};
+        envelope['msgType'] = "evtAction";
+        envelope['targetUrl'] = data.host;
+        envelope['params'] = Buffer.from(JSON.stringify(params)).toString('base64');
+        console.log(envelope);
+        const message = {message : { topic : "update", data : { envelope : Buffer.from(JSON.stringify(envelope)).toString('base64') } } };
+        var options = {
+            method: 'POST',
+            uri: fcmUrl,
+            headers: {
+                    "Content-type": "application/json",
+                    'Authorization': 'Bearer ' + accessToken
+                },
+            body: message,
+            json: true // Automatically stringifies the body to JSON
+        };
+        return Promise.resolve(request(options));
+    }).then( (data) => {
+            console.log(data);
+            return conv.close("Ok, requesting to switch outside flood lights " + value) ;
+            //return Promise.resolve();
+    }).catch( (error) => {
+                console.log('Request failed', error);
+                return conv.close("Oops, that did not work.");
+                //return Promise.reject(error);
+    });
+}
+
+app.intent('floodLightOn', (conv) => {
+    return runShellCmd(conv, 'floodLight', "on");
+});
+
+app.intent('floodLightOff', (conv) => {
+    return runShellCmd(conv, 'floodLight', "off");
 });
 
 

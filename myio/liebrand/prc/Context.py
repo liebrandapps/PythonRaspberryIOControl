@@ -8,8 +8,9 @@ from os.path import join, exists, dirname, isdir
 from os import access, W_OK, R_OK
 
 from myio.liebrand.prc.Entity import Switch, FS20, UltraSonic, Sensor18B20, Netio230, HMS100T, HMS100TF, KSH300, \
-    FS20Sensor, Peer, Camera, RpiCam, BMP180, Awning, ChromeCast
+    FS20Sensor, Peer, Camera, RpiCam, BMP180, Awning, ChromeCast, Kerui
 from myio.liebrand.prc.Sens18B20 import Sens18B20Wrapper
+from myio.liebrand.prc.SensorDataHandler import SensorDataHandler
 from myio.liebrand.prc.config import Config
 from myio.liebrand.prc.firebase.RealtimeDB import RealtimeDB
 from myio.liebrand.prc.fs20 import Fs20Wrapper
@@ -58,12 +59,16 @@ class Context:
         self.rpiCam = {}
         self.bmp180 = {}
         self.awning = {}
-        self.chromeCast ={}
+        self.chromeCast = {}
+        self.kerui = {}
         self.fcm = PushNotification(self)
         self.api = None
         self.setupDevices()
         self.rdb = RealtimeDB(self)
         self.api = None
+        self.shellCmds = {}
+        self.readShellCmds()
+        self.sdh = SensorDataHandler(self)
 
     def getStatus(self):
         return [self.cfgOk, self.logOk, self.dbOk]
@@ -168,6 +173,7 @@ class Context:
         bmp180Count = self.cfg.general_bmp180
         awningCount = self.cfg.general_awningCount
         chromeCastCount = self.cfg.general_chromeCastCount
+        keruiCount = self.cfg.general_keruiCount
 
         self.cfg.setSection(Config.SECTIONS[Config.GENERAL])
 
@@ -257,3 +263,26 @@ class Context:
                 o = ChromeCast(index+1, self.cfg)
                 self.chromeCast[o.entityId] = o
 
+        if keruiCount>0:
+            for index in range(keruiCount):
+                o = Kerui(index+1, self.cfg)
+                self.kerui[o.entityId] = o
+
+
+    def readShellCmds(self):
+        cfgDict = {
+            "shellCmds" : {
+                "count" : ["Integer", 0]
+            }
+        }
+        self.cfg.addScope(cfgDict)
+        count = self.cfg.shellCmds_count
+        if count>0:
+            d = {}
+            for index in range(count):
+                d['shellCmd_%d' % (index+1)] = ["Array", ]
+            self.cfg.addScope( { 'shellCmds' : d } )
+            for index in range(count):
+                key = 'shellCmd_%d' % (index+1)
+                tmp = getattr(self.cfg, "shellCmds_%s" % key)
+                self.shellCmds[tmp[0]] = tmp[1:]
