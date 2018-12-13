@@ -154,7 +154,6 @@ class Poller(threading.Thread):
                         if instance.googleActionResponses is not None:
                             temperature = value[0]
                             humidity = value[1]
-                            self.log.debug(value)
                             # ago will be inaccurate by at max 15 minutes
                             ago = humanize.naturaltime(now - value[2])
                             value24 = self.ctx.api.queryCachedPushSensorValue(cursor, key, returnRaw=True, yesterday=True)
