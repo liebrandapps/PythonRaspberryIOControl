@@ -56,12 +56,14 @@
     <a id="txt_1" style="text-align:left;" href="#" onclick="showArea('switch');">Switches<span style="float:right;">[Relay]</span></a>
     <a id="txt_2" style="text-align:left;" href="#" onclick="showArea('fs20');">Switches<span style="float:right;">[FS20]</span></a>
 	<a id="txt_16" style="text-align:left;" href="#" onclick="showArea('netio');">Switches<span style="float:right;">[NetIO230]</span></a>
+	<a id="txt_38" style="text-align:left;" href="#" onclick="showArea('zigbee');">Switches<span style="float:right;">[ZIGBEE]</span></a>
     <a id="txt_4" style="text-align:left;" href="#" onclick="showArea('ultrasonic');">Distance<span style="float:right;">[Ultrasonic]</span></a>
     <a id="txt_6" style="text-align:left;" href="#" onclick="showArea('temperature');">Temperature<span style="float:right;">[DS18B20]</span></a>
     <a id="txt_17" style="text-align:left;" href="#" onclick="showArea('hms100t');">Temperature<span style="float:right;">[HMS100T]</span></a>
     <a id="txt_18" style="text-align:left;" href="#" onclick="showArea('hms100tf');">Temperature<span style="float:right;">[HMS100TF]</span></a>
     <a id="txt_19" style="text-align:left;" href="#" onclick="showArea('ksh300');">Temperature<span style="float:right;">[KSH300]</span></a>
     <a id="txt_20" style="text-align:left;" href="#" onclick="showArea('fs20Sensor');">Sensors<span style="float:right;">[FS20]</span></a>
+    <a id="txt_37" style="text-align:left;" href="#" onclick="showArea('kerui');">Sensors<span style="float:right;">[KERUI]</span></a>
 	<a id="txt_31" style="text-align:left;" href="#" onclick="showArea('bmp180');">Temp/Air Pressure<span style="float:right;">[BMP180]</span></a>
 	<a id="txt_33" style="text-align:left;" href="#" onclick="showArea('awning');">Awning</a>
 	<a id="txt_26" style="text-align:left;" href="#" onclick="showArea('camera');">Cameras<span style="float:right;">[ONVIF]</span></a>
@@ -95,6 +97,8 @@
 					<br></div>
 				<div id="line_netioCount"><span><a>NetIO230 Actors</a><a style="float:right;" id="netioCount"></a></span>
 					<br></div>
+				<div id="line_zigbeeCount"><span><a>Zigbee Actors</a><a style="float:right;" id="zigbeeCount"></a></span>
+					<br></div>
 				<div id="line_ultrasonicCount"><span><a>Ultrasonic</a><a style="float:right;" id="ultrasonicCount"></a></span>
 					<br></div>
 				<div id="line_temperatureCount"><span><a>Temperature (DS18B20)</a><a style="float:right;" id="temperatureCount"></a></span>
@@ -106,6 +110,8 @@
 				<div id="line_ksh300Count"><span><a>Temperature /Humidity (KSH300)</a><a style="float:right;" id="ksh300Count"></a></span>
 					<br/></div>
 				<div id="line_fs20SensorCount"><span><a>FS20 Sensors</a><a style="float:right;" id="fs20SensorCount"></a></span>
+					<br/></div>
+				<div id="line_keruiCount"><span><a>Kerui Sensors</a><a style="float:right;" id="keruiCount"></a></span>
 					<br/></div>
 				<div id="line_bmp180Count"><span><a>BMP180 Temp/Air Pressure</a><a style="float:right;" id="bmp180Count"></a></span>
 					<br/></div>
@@ -255,6 +261,36 @@
 <div id="awning" style="display:none;">
 	<h1 id="txt_34">Awning / Sunblind Control</h1>
 	<div id="awning_container">
+
+	</div>
+</div>
+<div id="kerui" style="display:none;">
+	<h1 id="txt_35">Kerui Sensors</h1>
+	<hr/>
+	<div class="container">
+  		<div class="row">
+    		<div id="kerui_container_left" class="column-50l">
+			</div>
+    		<div id="kerui_container_right" class="column-50r">
+			</div>
+		</div>
+	</div>
+	<hr/>
+
+	</div>
+</div>
+<div id="zigbee" class="onoffs" style="display:none;">
+	<h1 id="txt_36">Zigbee Actors</h1>
+	<hr/>
+	<div class="container">
+  		<div class="row">
+    		<div id="zigbee_container_left" class="column-50l">
+			</div>
+    		<div id="zigbee_container_right" class="column-50r">
+			</div>
+		</div>
+	</div>
+	<hr/>
 
 	</div>
 </div>

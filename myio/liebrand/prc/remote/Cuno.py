@@ -150,6 +150,7 @@ class Cuno(threading.Thread):
                     os.read(self.controlPipe[0], 1)
                     if self.terminate:
                         continue
+                now = datetime.now()
                 while len(self.cmdQueue) > 0:
                     dta = self.cmdQueue.pop(0)
                     delta = datetime.now() - lastCmdSend
@@ -160,7 +161,9 @@ class Cuno(threading.Thread):
                     while rpt > 0:
                         rpt = rpt - 1
                         tn.write(dta)
-                    lastCmdSend = datetime.now()
+                    lastCmdSend = now
+                self.ctx.threadMonitor[self.__class__.__name__] = now
+                self.ctx.checkThreads(now)
 
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()

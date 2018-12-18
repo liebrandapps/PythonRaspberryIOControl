@@ -44,7 +44,8 @@ class PRCApiHandler(Handler):
 
         self.peer = ctx.peer
         self.dcts = [ctx.switch, ctx.fs20, ctx.ultrasonic, ctx.sensor18B20, ctx.netio230, ctx.hms100t,
-            ctx.hms100tf, ctx.ksh300, ctx.fs20Sensor, ctx.camera, ctx.rpiCam, ctx.bmp180, ctx.awning]
+            ctx.hms100tf, ctx.ksh300, ctx.fs20Sensor, ctx.camera, ctx.rpiCam, ctx.bmp180, ctx.awning,
+                     ctx.kerui, ctx.zigbee]
         self.switch = ctx.switch
         self.fs20 = ctx.fs20
         self.us = ctx.ultrasonic
@@ -58,6 +59,8 @@ class PRCApiHandler(Handler):
         self.rpiCam = ctx.rpiCam
         self.bmp180 = ctx.bmp180
         self.awning = ctx.awning
+        self.kerui = ctx.kerui
+        self.zigbee = ctx.zigbee
         self.cfg.setSection(Config.SECTIONS[Config.WEB])
         self.headline = self.cfg.headline
 
@@ -205,7 +208,8 @@ class PRCApiHandler(Handler):
                     data[FN.FLD_MAX] = rg[1]
                 elif key.startswith('netio'):
                     data[FN.FLD_STATUS] = instance.status()[1]
-                elif key.startswith('hms100t') or key.startswith('ksh300') or key.startswith('fs20Sensor'):
+                elif key.startswith('hms100t') or key.startswith('ksh300') or key.startswith('fs20Sensor') \
+                    or key.startswith('kerui') or key.startswith('zigbee'):
                     data[FN.FLD_VALUE] = self.queryCachedPushSensorValue(cursor, key)
                 elif key.startswith('camera'):
                     data[FN.FLD_CANSTREAM] = instance.streamingEnabled
@@ -229,7 +233,7 @@ class PRCApiHandler(Handler):
         #
         idxs = [len(self.switch), len(self.fs20), len(self.us), len(self.temp), len(self.netio230),
                 len(self.hms100t), len(self.hms100tf), len(self.ksh300), len(self.fs20Sensor), len(self.camera),
-                len(self.rpiCam), len(self.bmp180), len(self.awning)]
+                len(self.rpiCam), len(self.bmp180), len(self.awning), len(self.kerui), len(self.zigbee)]
         if roaming:
             for key in self.peer.keys():
                 p = self.peer[key]
@@ -246,7 +250,7 @@ class PRCApiHandler(Handler):
         counters = [FN.FLD_SWITCHCOUNT, FN.FLD_FS20COUNT, FN.FLD_ULTRASONICCOUNT, FN.FLD_TEMPERATURECOUNT,
                     FN.FLD_NETIOCOUNT, FN.FLD_HMS100TCOUNT, FN.FLD_HMS100TFCOUNT, FN.FLD_KSH300COUNT,
                     FN.FLD_FS20SENSORCOUNT, FN.FLD_CAMERACOUNT, FN.FLD_RPICAMCOUNT, FN.FLD_BMP180COUNT,
-                    FN.FLD_AWNING_COUNT]
+                    FN.FLD_AWNING_COUNT, FN.FLD_KERUICOUNT, FN.FLD_ZIGBEECOUNT]
         for c, i in zip(counters, idxs):
             dct[c] = i
         dct[FN.FLD_PEERCOUNT] = len(self.peer)
@@ -292,11 +296,12 @@ class PRCApiHandler(Handler):
 
         idxs = [len(self.switch), len(self.fs20), len(self.us), len(self.temp), len(self.netio230),
                 len(self.hms100t), len(self.hms100tf), len(self.ksh300), len(self.fs20Sensor),
-                len(self.camera), len(self.rpiCam), len(self.bmp180), len(self.awning)]
+                len(self.camera), len(self.rpiCam), len(self.bmp180), len(self.awning),
+                len(self.kerui), len(self.zigbee)]
         counters = [FN.FLD_SWITCHCOUNT, FN.FLD_FS20COUNT, FN.FLD_ULTRASONICCOUNT, FN.FLD_TEMPERATURECOUNT,
                     FN.FLD_NETIOCOUNT, FN.FLD_HMS100TCOUNT, FN.FLD_HMS100TFCOUNT, FN.FLD_KSH300COUNT,
                     FN.FLD_FS20SENSORCOUNT, FN.FLD_CAMERACOUNT, FN.FLD_RPICAMCOUNT, FN.FLD_BMP180COUNT,
-                    FN.FLD_AWNING_COUNT]
+                    FN.FLD_AWNING_COUNT, FN.FLD_KERUICOUNT, FN.FLD_ZIGBEECOUNT]
         for c, i in zip(counters, idxs):
             dct[c] = i
         dct[FN.FLD_PEERCOUNT] = len(self.peer)
@@ -344,7 +349,8 @@ class PRCApiHandler(Handler):
                     status, value = instance.wrapper.measure(instance.getAddress())
                     data[FN.FLD_VALUE] = value
                     data[FN.FLD_STATUS] = status
-                elif key.startswith('hms100') or key.startswith('ksh300') or key.startswith('fs20Sensor'):
+                elif key.startswith('hms100') or key.startswith('ksh300') or key.startswith('fs20Sensor') \
+                        or key.startswith('kerui') or key.startswith('zigbee'):
                     data[FN.FLD_VALUE] = self.queryCachedPushSensorValue(cursor, key)
                 elif key.startswith('bmp180'):
                     x = instance.wrapper.measure()
@@ -356,7 +362,7 @@ class PRCApiHandler(Handler):
         #
         idxs = [len(self.switch), len(self.fs20), len(self.us), len(self.temp), len(self.netio230),
                 len(self.hms100t), len(self.hms100tf), len(self.fs20Sensor), len(self.camera),
-                len(self.rpiCam), len(self.bmp180), len(self.awning)]
+                len(self.rpiCam), len(self.bmp180), len(self.awning), len(self.kerui), len(self.zigbee)]
         if roaming:
             for key in self.peer.keys():
                 p = self.peer[key]
@@ -373,7 +379,7 @@ class PRCApiHandler(Handler):
         counters = [FN.FLD_SWITCHCOUNT, FN.FLD_FS20COUNT, FN.FLD_ULTRASONICCOUNT, FN.FLD_TEMPERATURECOUNT,
                     FN.FLD_NETIOCOUNT, FN.FLD_HMS100TCOUNT, FN.FLD_HMS100TFCOUNT, FN.FLD_KSH300COUNT,
                     FN.FLD_FS20SENSORCOUNT, FN.FLD_CAMERACOUNT, FN.FLD_RPICAMCOUNT, FN.FLD_BMP180COUNT,
-                    FN.FLD_AWNING_COUNT]
+                    FN.FLD_AWNING_COUNT, FN.FLD_KERUICOUNT, FN.FLD_ZIGBEECOUNT]
         for c, i in zip(counters, idxs):
             dct[c] = i
         dct[FN.FLD_LASTUPDATETIME] = time.time()
@@ -396,6 +402,12 @@ class PRCApiHandler(Handler):
                     swdct[FN.FLD_STATUS] = self.switch[key].wrapper.status(self.switch[key].getGPIO())
                 elif key.startswith("fs20"):
                     swdct[FN.FLD_STATUS] = self.fs20[key].wrapper.status(self.fs20[key].getAddress())
+                elif key.startswith("zigbee"):
+                    conn = self.ctx.openDatabase()
+                    cursor = conn.cursor()
+                    swdct[FN.FLD_STATUS] = self.queryCachedPushSensorValue(cursor, key)
+                    cursor.close()
+                    self.ctx.closeDatabase(conn)
                 else:
                     swdct[FN.FLD_STATUS] = self.netio230[key].status()[1]
                 dct[FN.FLD_STATUS] = FN.ok
@@ -431,6 +443,9 @@ class PRCApiHandler(Handler):
                     elif sw.startswith("fs20"):
                         address = self.fs20[sw].getAddress()
                         result = self.fs20[sw].wrapper.switch(address, fields[FN.FLD_VALUE])
+                    elif sw.startswith("zigbee"):
+                        self.zigbee[sw].switch(fields[FN.FLD_VALUE])
+                        result = [ 200, FN.ok]
                     else:
                         result = self.netio230[sw].switch(fields[FN.FLD_VALUE])
                     if FN.FLD_USER in fields:

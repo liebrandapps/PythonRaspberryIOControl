@@ -9,6 +9,7 @@ from myio.liebrand.prc.PRCWebHandler import PRCWebHandler
 from myio.liebrand.prc.PRCApiHandler import PRCApiHandler
 from myio.liebrand.prc.Poller import Poller
 from myio.liebrand.prc.remote.Cuno import Cuno
+from myio.liebrand.prc.remote.MQTT import MQTTSubscriber, MQTTPublisher
 
 
 def terminate(sigNo, stackFrame):
@@ -18,6 +19,8 @@ def terminate(sigNo, stackFrame):
         cunoThread.doTerminate()
     if keruiThread is not None:
         keruiThread.doTerminate()
+    if mqtt is not None:
+        mqtt.stop()
 
 if __name__ == '__main__':
     pollerThread = None
@@ -38,6 +41,7 @@ if __name__ == '__main__':
             'awningCount': ["Integer", 0],
             'chromeCastCount': ['Integer', 0],
             'keruiCount': ['Integer', 0],
+            'zigbeeCount': ['Integer', 0],
             'address' : ["String", ],
             'addressNoSSL': ["String", ],
             'peerBackup' : ["Array", ]
@@ -69,6 +73,14 @@ if __name__ == '__main__':
         keruiThread.start()
     else:
         keruiThread = None
+    mqtt = MQTTSubscriber(ctx)
+    if mqtt.enabled:
+        mqtt.start()
+        mqttPub = MQTTPublisher(mqtt)
+        for k in ctx.zigbee.keys():
+            ctx.zigbee[k].wrapper=mqttPub
+    else:
+        mqtt = None
     prcApiHandler = PRCApiHandler(ctx)
     prcWebHandler = PRCWebHandler(ctx)
     ctx.api = prcApiHandler

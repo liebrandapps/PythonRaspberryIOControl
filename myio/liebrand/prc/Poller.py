@@ -323,13 +323,16 @@ class Poller(threading.Thread):
                     self.log.error("[Poller] Error executing shell command %s: Reason %s" % (cmd, e))
                     self.log.debug("[Poller] Params were %s", json.dumps(camData))
 
-            # timer
-
             # backup
             nextBackup-=1
             if nextBackup == 0:
                 nextBackup = 96
                 self.backupToPeer()
+
+            # alive check for threads
+            nowUpdated = datetime.now()
+            self.ctx.threadMonitor[self.__class__.__name__] = nowUpdated
+            self.ctx.checkThreads(nowUpdated)
 
             # adjust the waiting time, otherwise we will deviate from the hourly quarter with each loop
             timeNeeded = (datetime.now() - now).seconds

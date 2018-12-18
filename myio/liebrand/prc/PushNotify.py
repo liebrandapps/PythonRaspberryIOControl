@@ -79,24 +79,62 @@ class PushNotification:
             'Authorization': 'Bearer ' + self.get_access_token(),
             'Content-Type': 'application/json; UTF-8'
         }
+
         if 'data' in payload['message']:
-            if prio > 1:
-                payload['message']['data'][PushNotification.PRIO] = prio
-            # convert substructure to string as firebase won't handle it otherwise
-            #for key in payload['message']['data'].keys():
-            #    if type(payload['message']['data'][key] == dict):
-            #        payload['message']['data'][key] = json.dumps(payload['message']['data'][key])
-            payload['message']['data'] = { 'envelope' : b64encode(json.dumps(payload['message']['data'])) }
+            # fcm has a message size limit of approx. 4kb
+            # the following code recursively splits messages until each message in the set
+            # is of size 2700 bytes or less
+            # we work with some buffer as the (split) message needs to be wrapped into message and data plus
+            # a base64 encoding is needed. Base 64 encoding adds 1/3 in size (approx.)
+            loadsIn = [payload['message']['data'], ]
+            didSplit = True
+            while didSplit:
+                didSplit = False
+                loadsOut = []
+                for l in loadsIn:
+                    if len(json.dumps(l)) > 2700:
+                        i = 0
+                        d = [{}, {}]
+                        for k in l.keys():
+                            if k in ['msgType', 'serverId', 'timeStamp']:
+                               d[0][k] = l[k]
+                               d[1][k] = l[k]
+                            else:
+                                d[i % 2][k] = l[k]
+                            i = i + 1
+                        loadsOut.append(d[0])
+                        loadsOut.append(d[1])
+                        didSplit = True
+                    else:
+                        loadsOut.append(l)
+                loadsIn = loadsOut
 
-        self.log.debug(payload)
-        resp = requests.post(self.url, data=json.dumps(payload), headers=headers)
+            for l in loadsIn:
+                ll = {'message': {'topic': payload['message']['topic'], 'data': l}}
+                if prio > 1:
+                    ll['message']['data'][PushNotification.PRIO] = prio
+                # convert substructure to string as firebase won't handle it otherwise
+                ll['message']['data'] = {'envelope': b64encode(json.dumps(ll['message']['data']))}
+                jsonString = json.dumps(ll)
+                self.log.debug("[FCM] Message (%d bytes): %s" % (len(jsonString), jsonString[0:60]))
+                resp = requests.post(self.url, data=jsonString, headers=headers)
+                if resp.status_code == 200:
+                    self.log.debug(
+                        '[FCM] Message sent to Firebase for delivery, response: %s' % (resp.text.replace('\n', ' '),))
+                else:
+                    break
 
-        if resp.status_code == 200:
-            self.log.debug('[FCM] Message sent to Firebase for delivery, response: %s' % (resp.text,))
-        elif resp.status_code == 503:
+        else:
+            jsonString = json.dumps(payload)
+            self.log.debug("[FCM] Message (%d bytes): %s" % (len(jsonString), jsonString[0:60]))
+            resp = requests.post(self.url, data=jsonString, headers=headers)
+            if resp.status_code == 200:
+                self.log.debug('[FCM] Message sent to Firebase for delivery, response: %s' % (resp.text.replace('\n', ' '),))
+
+        if resp.status_code == 503:
             self.log.warn('[FCM] Unable to send message as Firebase Service is currently unavailable')
         else:
-            self.log.error('[FCM] Unable to send message to Firebase: %s' % (resp.text,))
+            self.log.error('[FCM] Unable to send message to Firebase: %s' % (resp.text.replace('\n', ' '),))
 
 
     def buildMessage(self, topic, title, body, data):

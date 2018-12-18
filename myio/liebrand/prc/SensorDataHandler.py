@@ -70,7 +70,7 @@ class SensorDataHandler:
             cursor.close()
             self.ctx.closeDatabase(conn)
         except sqlite3.OperationalError as e:
-            self.log.warn("[CUNO] Cannot write to db: %s" % e)
+            self.log.warn("[SDH] Cannot write to db: %s" % e)
             if cursor is not None:
                 cursor.close()
             if conn is not None:
@@ -81,7 +81,7 @@ class SensorDataHandler:
             message = {}
             message[device.entityId] = {FN.FLD_VALUE : tmpValue,
                                     FN.FLD_TIMESTAMP : str(int(time.time() * 1000)),
-                                    FN.FLD_CMD : "cuno"}
+                                    FN.FLD_CMD : "sdh"}
             message[SensorDataHandler.KEY_SERVERID] = self.serverId
             message[SensorDataHandler.KEY_MSGTYPE] = "evtUpdate"
             payload = self.pushNotify.buildDataMessage(SensorDataHandler.TOPIC_UPDATE, message)

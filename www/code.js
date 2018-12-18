@@ -13,6 +13,8 @@ var MAX_CAMERA = 0;
 var MAX_BMP180 = 0;
 var MAX_AWNING = 0;
 var MAX_RPICAM = 0;
+var MAX_KERUI = 0;
+var MAX_ZIGBEE = 0;
 var updateInProgress = false;
 var url = "/prcapi"
 var hostMap = {};
@@ -158,14 +160,17 @@ function initUI() {
 
                 const arrId = [ "switchCount", "fs20Count", "ultrasonicCount", "temperatureCount", "netioCount",
                                 "cameraCount", "rpicamCount", "hms100tCount", "hms100tfCount", "ksh300Count",
-                                "fs20SensorCount", "bmp180Count", "awningCount" ];
+                                "fs20SensorCount", "bmp180Count", "awningCount", "keruiCount", "zigbeeCount" ];
                 let arrCount = [jsn.switchCount, jsn.fs20Count, jsn.ultrasonicCount, jsn.temperatureCount,
                                 jsn.netioCount, jsn.cameraCount, jsn.rpicamCount, jsn.hms100tCount, jsn.hms100tfCount,
-                                jsn.ksh300Count, jsn.fs20SensorCount, jsn.bmp180Count, jsn.awningCount];
+                                jsn.ksh300Count, jsn.fs20SensorCount, jsn.bmp180Count, jsn.awningCount,
+                                jsn.keruiCount, jsn.zigbeeCount ];
                 let idx = 0;
                 while(idx<arrId.length) {
                     jsn.address.forEach(server => {
-                        arrCount[idx] += jsn[server][arrId[idx]];
+                        if(jsn[server].hasOwnProperty(arrId[idx])) {
+                            arrCount[idx] += jsn[server][arrId[idx]];
+                        }
                     });
                     idx += 1;
                 }
@@ -196,6 +201,10 @@ function initUI() {
                 for(i=0; i<arrCount[1]; i++) {
                     parent = document.getElementById((i<8)? "fs20_container_left" : "fs20_container_right")
                     parent.innerHTML += html.replace(/switch_ID/g, "fs20_"  + String(i+1));
+                }
+                for(i=0; i<arrCount[14]; i++) {
+                    parent = document.getElementById((i<8)? "zigbee_container_left" : "zigbee_container_right")
+                    parent.innerHTML += html.replace(/switch_ID/g, "zigbee_"  + String(i+1));
                 }
                 for(i=0; i<arrCount[4]; i++) {
                     parent = document.getElementById((i<8)? "netio_container_left" : "netio_container_right")
@@ -232,6 +241,10 @@ function initUI() {
                 for(i=0; i<arrCount[10]; i++) {
                     parent = document.getElementById((i<8)? "fs20Sensor_container_left" : "fs20Sensor_container_right");
                     parent.innerHTML += html.replace(/fs20Sensor_ID/g, "fs20Sensor_" + String(i+1));
+                }
+                for(i=0; i<arrCount[13]; i++) {
+                    parent = document.getElementById((i<8)? "kerui_container_left" : "kerui_container_right");
+                    parent.innerHTML += html.replace(/fs20Sensor_ID/g, "kerui_" + String(i+1));
                 }
                 html = document.getElementById("awning_TEMPLATE").innerHTML;
                 parent = document.getElementById("awning_container");
@@ -277,6 +290,8 @@ function showArea(areaId) {
     areaIds.add("rpicam");
     areaIds.add("bmp180");
     areaIds.add("awning");
+    areaIds.add("kerui");
+    areaIds.add("zigbee");
     areaIds.forEach(divId => {
         if (areaId === divId) {
             document.getElementById(divId).style.display = 'block';
@@ -355,7 +370,7 @@ function refreshSwitchValue(switchId) {
                 var jsn = JSON.parse(this.responseText)
                 console.log(jsn);
                 if(jsn.status === 'ok') {
-                    if(jsn[switchId].status === "on") {
+                    if(jsn[switchId].status.startsWith("on")) {
                         document.getElementById(switchId + "_check").checked = true;
                     }
                     else {
@@ -455,6 +470,27 @@ function requestConfig() {
                             pushMap[pushKey] = map;
                         }
                     }
+                    MAX_ZIGBEE = jsn.zigbeeCount;
+                    if(MAX_ZIGBEE==0) {
+                        document.getElementById("zigbee").style.display = 'none';
+                        document.getElementById("txt_38").style.display = 'none';
+                    }
+                    else {
+                        for(i=0; i<MAX_ZIGBEE; i++) {
+                            reference = "zigbee_"  + String(i+1);
+                            document.getElementById(reference).style.display = 'block';
+                            updateSwitch(reference, jsn[reference].name, jsn[reference].status);
+                            hostMap[reference] = jsn[reference].host;
+                            localIdMap[reference] = jsn[reference].localId;
+                            var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
+                            var map = {};
+                            map['docId'] = reference;
+                            map['docType'] = 'Z';
+                            map['name'] = jsn[reference].name;
+                            pushMap[pushKey] = map;
+                        }
+                    }
+
                     MAX_ULTRASONIC = jsn.ultrasonicCount;
                     if(MAX_ULTRASONIC==0) {
                         document.getElementById("ultrasonic").style.display = 'none';
@@ -574,7 +610,6 @@ function requestConfig() {
                         document.getElementById("txt_20").style.display = 'none';
                     }
                     else {
-                        var html = document.getElementById("fs20Sensor_TEMPLATE").innerHTML;
                         for(i=0; i<MAX_FS20SENSOR; i++) {
                             reference = "fs20Sensor_" + String(i+1);
                             document.getElementById(reference).style.display = 'block';
@@ -586,6 +621,27 @@ function requestConfig() {
                             var map = {}
                             map['docId'] = reference;
                             map['docType'] = 'FS';
+                            map['name'] = jsn[reference].name;
+                            pushMap[pushKey] = map;
+                        }
+                    }
+                    MAX_KERUI = jsn.keruiCount;
+                    if(MAX_KERUI==0) {
+                        document.getElementById("kerui").style.display = 'none';
+                        document.getElementById("txt_37").style.display = 'none';
+                    }
+                    else {
+                        for(i=0; i<MAX_KERUI; i++) {
+                            reference = "kerui_" + String(i+1);
+                            document.getElementById(reference).style.display = 'block';
+                            document.getElementById(reference + "_label").innerHTML = jsn[reference].name
+                            document.getElementById(reference + "_value").innerHTML = jsn[reference].value
+                            hostMap[reference] = jsn[reference].host;
+                            localIdMap[reference] = jsn[reference].localId;
+                            var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
+                            var map = {}
+                            map['docId'] = reference;
+                            map['docType'] = 'KR';
                             map['name'] = jsn[reference].name;
                             pushMap[pushKey] = map;
                         }
@@ -668,17 +724,19 @@ function requestConfig() {
                     else {
                         for(i=0; i<MAX_BMP180; i++) {
                             reference = "bmp180_" + String(i+1);
-                            document.getElementById(reference).style.display = 'block';
-                            document.getElementById(reference + "_label").innerHTML=jsn[reference].name + ": " +
-                                    jsn[reference].value;
-                            hostMap[reference] = jsn[reference].host;
-                            localIdMap[reference] = jsn[reference].localId;
-                            var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
-                            var map = {}
-                            map['docId'] = reference;
-                            map['docType'] = 'BMP180';
-                            map['name'] = jsn[reference].name;
-                            pushMap[pushKey] = map;
+                            if(document.getElementById(reference)!=null) {
+                                document.getElementById(reference).style.display = 'block';
+                                document.getElementById(reference + "_label").innerHTML=jsn[reference].name + ": " +
+                                        jsn[reference].value;
+                                hostMap[reference] = jsn[reference].host;
+                                localIdMap[reference] = jsn[reference].localId;
+                                var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
+                                var map = {}
+                                map['docId'] = reference;
+                                map['docType'] = 'BMP180';
+                                map['name'] = jsn[reference].name;
+                                pushMap[pushKey] = map;
+                            }
                         }
                     }
                     MAX_AWNING = jsn.awningCount;

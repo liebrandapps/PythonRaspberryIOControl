@@ -34,14 +34,15 @@ class KeruiWrapper(threading.Thread):
 
     def run(self):
         self.log.info("[KERUI] Starting Kerui Client")
-        self.port = serial.Serial(self.usbPort, baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=3)
         lastCleanup = datetime.now()
+        self.ctx.threadMonitor[self.__class__.__name__] = lastCleanup
+        self.port = serial.Serial(self.usbPort, baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=30)
         while not self.terminate:
             try:
                 code = str(self.port.readline())
+                now = datetime.now()
                 if len(code)>0:
                     code = code.strip()
-                    now = datetime.now()
                     knownDevice = False
                     for entityId in self.ctx.kerui.keys():
                         o = self.ctx.kerui[entityId]
@@ -58,10 +59,12 @@ class KeruiWrapper(threading.Thread):
                             self.log.info("[KERUI] Unknown device ID %s", code)
                             self.unknownAddresses.append(code)
                     if (now - lastCleanup).seconds > 86400:
-                        # reset unknowndevices and lastHeardOf every 24 hours to prevent filling up memory
+                        # reset unknown devices and lastHeardOf every 24 hours to prevent filling up memory
                         # implication is that unknown devices appear basically once a day
                         self.lastHeardOf = {}
                         self.unknownAddresses = []
+                self.ctx.threadMonitor[self.__class__.__name__] = now
+                self.ctx.checkThreads(now)
             except TypeError:
                 pass
 

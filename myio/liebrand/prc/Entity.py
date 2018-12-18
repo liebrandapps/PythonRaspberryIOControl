@@ -3,6 +3,9 @@
 #
 # Extend your locales here
 #
+import json
+
+
 class Entity:
 
     NAME = "name_%s"
@@ -355,3 +358,32 @@ class Kerui(Entity):
         }
         Entity.__init__(self, cfgDict, cfg)
         self.address = getattr(cfg, '%s_address' % self.entityId)
+
+class Zigbee(Entity):
+
+    SECTION = "zigbee_%d"
+
+    def __init__(self, index, cfg):
+        cfgDict = {
+            Zigbee.SECTION % index: {
+                "topic" : ["String", ],
+                "suffix": ["String", "/set"]
+            }
+        }
+        Entity.__init__(self, cfgDict, cfg)
+        self.topic = getattr(cfg, "%s_topic" % self.entityId)
+        self.suffix = getattr(cfg, "%s_suffix" % self.entityId)
+
+    def switch(self, value):
+        if value == 'on':
+            self.turnOn()
+        else:
+            self.turnOff()
+
+    def turnOn(self):
+        dct = { 'state' : 'ON' }
+        self.wrapper.publish(self.topic + self.suffix, json.dumps(dct))
+
+    def turnOff(self):
+        dct = { 'state' : 'OFF' }
+        self.wrapper.publish(self.topic + self.suffix, json.dumps(dct))

@@ -8,7 +8,7 @@ from os.path import join, exists, dirname, isdir
 from os import access, W_OK, R_OK
 
 from myio.liebrand.prc.Entity import Switch, FS20, UltraSonic, Sensor18B20, Netio230, HMS100T, HMS100TF, KSH300, \
-    FS20Sensor, Peer, Camera, RpiCam, BMP180, Awning, ChromeCast, Kerui
+    FS20Sensor, Peer, Camera, RpiCam, BMP180, Awning, ChromeCast, Kerui, Zigbee
 from myio.liebrand.prc.Sens18B20 import Sens18B20Wrapper
 from myio.liebrand.prc.SensorDataHandler import SensorDataHandler
 from myio.liebrand.prc.config import Config
@@ -61,6 +61,7 @@ class Context:
         self.awning = {}
         self.chromeCast = {}
         self.kerui = {}
+        self.zigbee = {}
         self.fcm = PushNotification(self)
         self.api = None
         self.setupDevices()
@@ -69,6 +70,8 @@ class Context:
         self.shellCmds = {}
         self.readShellCmds()
         self.sdh = SensorDataHandler(self)
+        self.threadMonitor = {}
+        self.lastThreadCheck = None
 
     def getStatus(self):
         return [self.cfgOk, self.logOk, self.dbOk]
@@ -174,6 +177,7 @@ class Context:
         awningCount = self.cfg.general_awningCount
         chromeCastCount = self.cfg.general_chromeCastCount
         keruiCount = self.cfg.general_keruiCount
+        zigbeeCount = self.cfg.general_zigbeeCount
 
         self.cfg.setSection(Config.SECTIONS[Config.GENERAL])
 
@@ -268,6 +272,11 @@ class Context:
                 o = Kerui(index+1, self.cfg)
                 self.kerui[o.entityId] = o
 
+        if zigbeeCount>0:
+            for index in range(zigbeeCount):
+                o = Zigbee(index+1, self.cfg)
+                self.zigbee[o.entityId] = o
+
 
     def readShellCmds(self):
         cfgDict = {
@@ -286,3 +295,12 @@ class Context:
                 key = 'shellCmd_%d' % (index+1)
                 tmp = getattr(self.cfg, "shellCmds_%s" % key)
                 self.shellCmds[tmp[0]] = tmp[1:]
+
+    def checkThreads(self, now):
+        if self.lastThreadCheck is None or (now - self.lastThreadCheck).seconds>300:
+            self.lastThreadCheck = now
+            for k in self.threadMonitor:
+                if (now - self.threadMonitor[k]).seconds>900:
+                    # thread has not updated since 15 minutes
+                    self.log.warn("[CTX] Thread for class %s has not sent an alive message for %d seconds" %
+                                  (k, ((now - self.threadMonitor[k]).seconds)))
