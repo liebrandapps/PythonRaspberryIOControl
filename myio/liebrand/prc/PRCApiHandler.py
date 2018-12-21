@@ -154,8 +154,6 @@ class PRCApiHandler(Handler):
         return [resultCode, resultHeaders, body]
 
     def cmdConfig(self, fields, dct, host):
-        conn = self.ctx.openDatabase()
-        cursor = conn.cursor()
         locale = PRCApiHandler.DEFAULT_LOCALE
         if FN.FLD_LOCALE in fields:
             locale = fields[FN.FLD_LOCALE]
@@ -178,17 +176,17 @@ class PRCApiHandler(Handler):
                 instance = d[key]
                 data[FN.FLD_NAME] = instance.getName(locale)
                 if key.startswith('switch'):
-                    value = self.queryCachedActorStatus(cursor, key)
+                    value = self.queryCachedActorStatus(key)
                     if value is None:
                         value = instance.wrapper.status(instance.getGPIO())
                     data[FN.FLD_STATUS] = value
                 elif key.startswith('fs20') and not(key.startswith('fs20Sensor')):
-                    value = self.queryCachedActorStatus(cursor, key)
+                    value = self.queryCachedActorStatus(key)
                     if value is None:
                         value = instance.wrapper.status(instance.getAddress())
                     data[FN.FLD_STATUS] = value
                 elif key.startswith('ultrasonic'):
-                    value = self.queryCachedSensorValue(cursor, key)
+                    value = self.queryCachedSensorValue(key)
                     if value is None:
                         value = instance.wrapper.measure()
                     data[FN.FLD_VALUE] = value
@@ -197,7 +195,7 @@ class PRCApiHandler(Handler):
                     data[FN.FLD_MAX] = rg[1]
                     data[FN.FLD_INVERSE] = instance.getInverse()
                 elif key.startswith('temperature'):
-                    value = self.queryCachedSensorValue(cursor, key)
+                    value = self.queryCachedSensorValue(key)
                     status = "ok"
                     if value is None:
                         status, value = instance.wrapper.measure(instance.getAddress())
@@ -210,7 +208,7 @@ class PRCApiHandler(Handler):
                     data[FN.FLD_STATUS] = instance.status()[1]
                 elif key.startswith('hms100t') or key.startswith('ksh300') or key.startswith('fs20Sensor') \
                     or key.startswith('kerui') or key.startswith('zigbee'):
-                    data[FN.FLD_VALUE] = self.queryCachedPushSensorValue(cursor, key)
+                    data[FN.FLD_VALUE] = self.queryCachedPushSensorValue(key)
                 elif key.startswith('camera'):
                     data[FN.FLD_CANSTREAM] = instance.streamingEnabled
                     data[FN.FLD_CANTIMELAPSE] = instance.timelapseEnabled
@@ -260,8 +258,6 @@ class PRCApiHandler(Handler):
 
         resultCode = 200
         dct[FN.FLD_STATUS] = FN.ok
-        cursor.close()
-        self.ctx.closeDatabase(conn)
         return [resultCode, dct]
 
 
@@ -326,8 +322,6 @@ class PRCApiHandler(Handler):
 
     def cmdRefresh(self, fields, dct):
         roaming = FN.FLAG_ROAMING in fields
-        conn = self.ctx.openDatabase()
-        cursor = conn.cursor()
 
         for d in self.dcts:
             for key in d.keys():
@@ -351,7 +345,7 @@ class PRCApiHandler(Handler):
                     data[FN.FLD_STATUS] = status
                 elif key.startswith('hms100') or key.startswith('ksh300') or key.startswith('fs20Sensor') \
                         or key.startswith('kerui') or key.startswith('zigbee'):
-                    data[FN.FLD_VALUE] = self.queryCachedPushSensorValue(cursor, key)
+                    data[FN.FLD_VALUE] = self.queryCachedPushSensorValue(key)
                 elif key.startswith('bmp180'):
                     x = instance.wrapper.measure()
                     data[FN.FLD_VALUE] = "%.1f C | %.2f hPa" % (x[0], x[1])
@@ -387,8 +381,6 @@ class PRCApiHandler(Handler):
 
         resultCode = 200
         dct[FN.FLD_STATUS] = FN.ok
-        cursor.close()
-        self.ctx.closeDatabase(conn)
         return [resultCode, dct]
 
 
@@ -445,7 +437,7 @@ class PRCApiHandler(Handler):
                         result = self.fs20[sw].wrapper.switch(address, fields[FN.FLD_VALUE])
                     elif sw.startswith("zigbee"):
                         self.zigbee[sw].switch(fields[FN.FLD_VALUE])
-                        result = [ 200, FN.ok]
+                        result = [200, FN.ok]
                     else:
                         result = self.netio230[sw].switch(fields[FN.FLD_VALUE])
                     if FN.FLD_USER in fields:
@@ -458,11 +450,11 @@ class PRCApiHandler(Handler):
                     else:
                         now = datetime.datetime.now()
                         sql = "insert into actor(actorId, newValue, user, atTime, status) values (?, ?, ?, ?, ?)"
+                        c = self.dbAccess()
                         values = [sw, fields[FN.FLD_VALUE], user, now, result[1]]
-                        conn = self.ctx.openDatabase()
-                        conn.execute(sql, values)
-                        conn.commit()
-                        self.ctx.closeDatabase(conn)
+                        c[0].execute(sql, values)
+                        c[0].commit()
+                        self.dbAccess(c)
                         if not disableNotify:
                             messageDict={}
                             messageDict[sw] = {FN.FLD_VALUE: fields[FN.FLD_VALUE],
@@ -553,15 +545,11 @@ class PRCApiHandler(Handler):
             key = fields[FN.FLD_ID]
             targetHost = fields[FN.FLD_HOST]
             if host == targetHost:
-                conn = self.ctx.openDatabase()
-                cursor = conn.cursor()
                 dct[FN.FLD_STATUS] = FN.ok
                 if key.startswith('hms100t') or key.startswith('ksh300') or (key.startswith('fs20Sensor')):
-                    dct[key] = self.queryPushSensorHistory24(cursor, key)
+                    dct[key] = self.queryPushSensorHistory24(key)
                 else:
-                    dct[key] = self.querySensorHistory24(cursor, key)
-                cursor.close()
-                self.ctx.closeDatabase(conn)
+                    dct[key] = self.querySensorHistory24(key)
             else:
                 r = requests.post(targetHost, json=fields, verify=self.sslCert)
                 if r.status_code == 200:
@@ -582,28 +570,23 @@ class PRCApiHandler(Handler):
             # both != 0 refresh token
             token = fields[FN.FLD_TOKEN]
             clientId = fields[FN.FLD_CLIENTID]
-            conn = self.ctx.openDatabase()
-            cursor = conn.cursor()
             if len(clientId) == 0:
                 clientId = str(uuid.uuid4())
-                existingToken = self.getToken(cursor, clientId)
+                existingToken = self.getToken(clientId)
                 while existingToken is not None:
                     clientId = str(uuid.uuid4())
-                    existingToken = self.getToken(cursor, clientId)
+                    existingToken = self.getToken(clientId)
             if len(token) == 0:
-                existingToken = self.getToken(cursor, clientId)
+                existingToken = self.getToken(clientId)
                 self.log.debug("Going to delete Token %s for client %s" % (existingToken, clientId))
                 self.ctx.getPushNotify().unsubscribeFromTopic(existingToken, Poller.Poller.TOPIC_UPDATE)
-                self.deleteToken(cursor, clientId, existingToken)
+                self.deleteToken(clientId, existingToken)
             else:
                 self.log.debug("Going to save Token %s for client %s" % (token, clientId))
-                self.saveToken(cursor, clientId, token)
+                self.saveToken(clientId, token)
                 self.ctx.getPushNotify().subscribeToTopic(token, Poller.Poller.TOPIC_UPDATE)
             dct[FN.FLD_STATUS] = FN.ok
             dct[FN.FLD_CLIENTID] = clientId
-            conn.commit()
-            cursor.close()
-            self.ctx.closeDatabase(conn)
             # for key in self.peer.keys():
             #    p = self.peer[key]
             #    if p.getRoamingAddress() is not None:
@@ -688,7 +671,7 @@ class PRCApiHandler(Handler):
                     dct[FN.FLD_STATUS] = FN.fail
                     dct[FN.FLD_MESSAGE] ="Cam Snapshot failed with code %d" % result[0]
             else:
-                # remote switch
+                # remote camera
                 r = requests.post(targetHost, json=fields, verify=self.sslCert)
                 if r.status_code == 200:
                     dct = json.loads(r.text)
@@ -947,26 +930,29 @@ class PRCApiHandler(Handler):
                 key = s % i
 
 
-    def queryCachedSensorValue(self, cursor, sensorId):
+    def queryCachedSensorValue(self, sensorId):
         sql = "select value1 from SensorShort where sensorId = ? and atTime = (select max(atTime) from SensorShort where sensorId = ?)"
+        c = self.dbAccess()
         colValues = [sensorId, sensorId]
-        cursor.execute(sql, colValues)
-        row = cursor.fetchone()
+        c[1].execute(sql, colValues)
+        row = c[1].fetchone()
         result = None
         if row is not None and len(row)>0 and row[0] is not None:
             result = row[0]
+        self.dbAccess(c)
         return result
 
-    def queryCachedPushSensorValue(self, cursor, sensorId, returnRaw=False, yesterday=False, hourAgo=False):
+    def queryCachedPushSensorValue(self, sensorId, returnRaw=False, yesterday=False, hourAgo=False):
         if yesterday:
             sql = "select value1, value2, atTime from PushSensorShort where sensorId = ? and atTime = (select max(atTime) from PushSensorShort where sensorId = ? and atTime<(select datetime('now', '-1 day')))"
         elif hourAgo:
             sql = "select value1, value2, atTime from PushSensorShort where sensorId = ? and atTime = (select max(atTime) from PushSensorShort where sensorId = ? and atTime<(select datetime('now', '-1 hour')))"
         else:
             sql = "select value1, value2, atTime from PushSensorShort where sensorId = ? and atTime = (select max(atTime) from PushSensorShort where sensorId = ?)"
+        c = self.dbAccess()
         colValues = [sensorId, sensorId]
-        cursor.execute(sql, colValues)
-        row = cursor.fetchone()
+        c[1].execute(sql, colValues)
+        row = c[1].fetchone()
         result = None
         rawResult = None
         if row is not None and len(row)>0 and row[0] is not None:
@@ -976,24 +962,28 @@ class PRCApiHandler(Handler):
             else:
                 result = str(row[0]) + " | " + str(row[1]) + "|" + str(row[2])
                 rawResult = [row[0], row[1], row[2]]
+        self.dbAccess(c)
         return rawResult if returnRaw else result
 
 
-    def queryCachedActorStatus(self, cursor, actorId):
+    def queryCachedActorStatus(self, actorId):
         sql = "select newValue from Actor where actorId = ? and atTime = (select max(atTime) from Actor where actorId = ?)"
+        c = self.dbAccess()
         colValues = [actorId, actorId]
-        cursor.execute(sql, colValues)
-        row = cursor.fetchone()
+        c[1].execute(sql, colValues)
+        row = c[1].fetchone()
         result = None
         if row is not None and len(row) > 0 and row[0] is not None:
             result = row[0]
+        self.dbAccess(c)
         return result
 
-    def querySensorHistory24(self, cursor, sensorId):
+    def querySensorHistory24(self, sensorId):
         sql = "select hour, quarter, value1, value2 from SensorShort where sensorId = ? order by atTime"
+        c = self.dbAccess()
         colValues = [sensorId, ]
-        cursor.execute(sql, colValues)
-        rows = cursor.fetchall()
+        c[1].execute(sql, colValues)
+        rows = c[1].fetchall()
         set = []
         for r in rows:
             hour = r[0]
@@ -1011,15 +1001,17 @@ class PRCApiHandler(Handler):
             for s in set:
                 if s[0].endswith('30'):
                     s[0] = ""
+        self.dbAccess(c)
         return set
 
 
-    def queryPushSensorHistory24(self, cursor, sensorId):
+    def queryPushSensorHistory24(self, sensorId):
         now = datetime.datetime.now()
         sql = "select value1, value2, atTime from PushSensorShort where sensorId = ? and datetime(attime)>datetime('now', '-24 hours', 'localtime') order by atTime"
+        c = self.dbAccess()
         colValues = [sensorId, ]
-        cursor.execute(sql, colValues)
-        rows = cursor.fetchall()
+        c[1].execute(sql, colValues)
+        rows = c[1].fetchall()
         set = []
         for r in rows:
             t = round((now - r[2]).seconds / 3600, 2) * (-1)
@@ -1027,27 +1019,45 @@ class PRCApiHandler(Handler):
                 set.append([t, r[0]])
             else:
                 set.append([t, r[0], r[1]])
+        self.dbAccess(c)
         return set
 
 
-    def saveToken(self, cursor, clientId, newToken):
+    def saveToken(self, clientId, newToken):
         self.deleteToken(cursor, clientId, newToken)
         sql = "insert into Subscriptions (clientId, token) values (?, ?)"
+        c = self.dbAccess()
         colValues = [clientId, newToken]
-        cursor.execute(sql, colValues)
+        c[1].execute(sql, colValues)
+        self.dbAccess(c)
 
-    def getToken(self, cursor, clientId):
+    def getToken(self, clientId):
         sql = "select token from Subscriptions where clientId = ?"
+        c = self.dbAccess()
         colValues = [clientId, ]
-        cursor.execute(sql, colValues)
-        row = cursor.fetchone()
+        c[1].execute(sql, colValues)
+        row = c[1].fetchone()
         result = None
         if row is not None and len(row) > 0 and row[0] is not None:
             result = row[0]
+        self.dbAccess(c)
         return result
 
-    def deleteToken(self, cursor, clientId, token):
+    def deleteToken(self, clientId, token):
         sql = "delete from Subscriptions where clientId = ? and token = ?"
+        c = self.dbAccess()
         colValues = [clientId, token]
-        cursor.execute(sql, colValues)
+        c[1].execute(sql, colValues)
+        self.dbAccess(c)
 
+
+    def dbAccess(self, conn=None):
+        if conn is None:
+            self.ctx.dblock.acquire()
+            conn = self.ctx.openDatabase()
+            cursor = conn.cursor()
+            return [conn, cursor]
+        else:
+            conn[1].close()
+            self.ctx.closeDatabase(conn[0])
+            self.ctx.dblock.release()

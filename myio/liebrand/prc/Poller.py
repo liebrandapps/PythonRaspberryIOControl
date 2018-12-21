@@ -14,6 +14,7 @@ from datetime import datetime
 import threading
 import humanize
 
+from myio.liebrand.prc.SQLProcessor import SQLProcessor
 from myio.liebrand.prc.FieldNames import FN
 from myio.liebrand.prc.remote.Camera import IPCamera
 
@@ -57,53 +58,44 @@ class Poller(threading.Thread):
         tmp=self.wakeup.wait(delta)
         #self.log.debug(tmp)
         self.wakeup.clear()
-        delYCount = 0
-        insYCount = 0
-        delDCount = 0
-        insDCount = 0
         while not(self.terminate):
             now = datetime.now()
+            sqls = []
             hour = now.hour
             quarter = now.minute / 15
             slot = hour * 10 + quarter
             if hour == 0 and quarter == 0:
                 slot = 240
             messageDict = {}
-            conn = self.ctx.openDatabase()
-            cursor = conn.cursor()
-            #self.log.debug("Slot: %d %d" % (hour, quarter))
             sql = "delete from SensorShort where hour = ? and quarter = ?"
             colValues = [hour, quarter]
-            cursor.execute(sql, colValues)
-            delDCount += cursor.rowcount
+            sqls.append([sql, colValues])
             sensor18DS20 = self.ctx.sensor18B20
             for key in sensor18DS20.keys():
                 instance = sensor18DS20[key]
                 value = instance.measure()
                 sql = "insert into SensorShort(sensorId, value1, hour, quarter, slot, atTime) values (?, ?, ?, ?, ?, ?)"
                 colValues = [key, value[1], hour, quarter, slot, now]
-                #self.log.debug(colValues)
-                cursor.execute(sql, colValues)
+                sqls.append([sql, colValues])
                 messageDict[key] = value[1]
-                insDCount += cursor.rowcount
             us = self.ctx.ultrasonic
             for key in us.keys():
                 instance = us[key]
                 value = instance.measure()
                 sql = "insert into SensorShort(sensorId, value1, hour, quarter, slot, atTime) values (?, ?, ?, ?, ?, ?)"
                 colValues = [key, value, hour, quarter, slot, now]
-                cursor.execute(sql, colValues)
+                sqls.append([sql, colValues])
                 messageDict[key] = value
-                insDCount += cursor.rowcount
             bmp = self.ctx.bmp180
             for key in bmp.keys():
                 instance = bmp[key]
                 value = instance.wrapper.measure()
                 sql = "insert into SensorShort(sensorId, value1, value2, hour, quarter, slot, atTime) values (?, ?, ?, ?, ?, ?, ?)"
                 colValues = [key, value[0], value[1], hour, quarter, slot, now]
-                cursor.execute(sql, colValues)
+                sqls.append([sql, colValues])
                 messageDict[key] = value
-                insDCount += cursor.rowcount
+
+            self.ctx.sqlProcessor.addSQL([SQLProcessor.CMD_SQLMULTI, sqls])
 
             if self.ctx.fcm.isFCMEnabled:
                 # topic message regular Update
@@ -119,6 +111,9 @@ class Poller(threading.Thread):
                 combinedDict[FN.FLD_SERVERID] = self.serverId
                 combinedDict[Poller.KEY_TIMESTAMP] = str(int(time.time() * 1000))
                 combinedDict[Poller.KEY_MSGTYPE] = "evtUpdate"
+                self.ctx.dblock.acquire()
+                conn = self.ctx.openDatabase()
+                cursor = conn.cursor()
                 sql = "select rowid, payload from PNQueue"
                 cursor.execute(sql)
                 rows = cursor.fetchall()
@@ -141,6 +136,10 @@ class Poller(threading.Thread):
                     #        combinedDict[k] = json.dumps(combinedDict[k])
                     payload = pn.buildDataMessage(Poller.TOPIC_UPDATE, combinedDict)
                     pn.pushMessageDirect(payload)
+                conn.commit()
+                cursor.close()
+                self.ctx.closeDatabase(conn)
+                self.ctx.dblock.release()
                 if self.ctx.rdb.enabled:
                     accessToken = pn.get_access_token()
                     self.ctx.rdb.updateToken(accessToken, self.ctx.fcm.url, self.ctx.cfg.general_address)
@@ -150,16 +149,16 @@ class Poller(threading.Thread):
                 for key in ksh300.keys():
                     instance = ksh300[key]
                     if instance.googleActionVerbs is not None:
-                        value = self.ctx.api.queryCachedPushSensorValue(cursor, key, returnRaw=True)
+                        value = self.ctx.api.queryCachedPushSensorValue(key, returnRaw=True)
                         if instance.googleActionResponses is not None:
                             temperature = value[0]
                             humidity = value[1]
                             # ago will be inaccurate by at max 15 minutes
                             ago = humanize.naturaltime(now - value[2])
-                            value24 = self.ctx.api.queryCachedPushSensorValue(cursor, key, returnRaw=True, yesterday=True)
+                            value24 = self.ctx.api.queryCachedPushSensorValue(key, returnRaw=True, yesterday=True)
                             temperature24 = value[0]
                             humidity24 = value[1]
-                            value60 = self.ctx.api.queryCachedPushSensorValue(cursor, key, returnRaw=True, hourAgo=True)
+                            value60 = self.ctx.api.queryCachedPushSensorValue(key, returnRaw=True, hourAgo=True)
                             temperature60 = value[0]
                             humidity60 = value[1]
                             if temperature > temperature24:
@@ -184,6 +183,7 @@ class Poller(threading.Thread):
                             else:
                                 response = None
                             self.ctx.rdb.updateSensorTH(sensorName, value, response=response)
+
                 sensor18DS20 = self.ctx.sensor18B20
                 for key in sensor18DS20.keys():
                     instance = sensor18DS20[key]
@@ -196,12 +196,12 @@ class Poller(threading.Thread):
                 for key in fs20Sensor.keys():
                     instance = fs20Sensor[key]
                     if instance.googleActionVerbs is not None:
-                        value = self.ctx.api.queryCachedPushSensorValue(cursor, key, returnRaw=True)
+                        value = self.ctx.api.queryCachedPushSensorValue(key, returnRaw=True)
                         if value is not None:
                             peerUpdateisNewer = False
                             if len(instance.peerSensors)>0:
                                 for peerKey in instance.peerSensors:
-                                    peerValue = self.ctx.api.queryCachedPushSensorValue(cursor, key, returnRaw=True)
+                                    peerValue = self.ctx.api.queryCachedPushSensorValue(key, returnRaw=True)
                                     if peerValue is not None and peerValue[1] > value[1]:
                                         peerUpdateisNewer = True
                                         break
@@ -215,6 +215,7 @@ class Poller(threading.Thread):
                                     else:
                                         response = None
                                     self.ctx.rdb.updateSensorS(sensorName, instance.entityId, value[0], ago, response)
+
                         #self.log.debug(key)
                         #self.log.debug(value)
                         #self.log.debug(instance.googleActionResponses)
@@ -230,8 +231,14 @@ class Poller(threading.Thread):
             #    payload = pn.buildMessage(to, "Update", "abc", json.dumps(messageDict))
             #    pn.pushMessage(payload)
 
+            # sql processor
+            self.ctx.sqlProcessor.addSQL([SQLProcessor.CMD_PUSHSENSORLONG])
+
             # transfer into long table every 6 hours
             if (hour % 6 == 0) and quarter == 0:
+                self.ctx.dblock.acquire()
+                conn = self.ctx.openDatabase()
+                cursor = conn.cursor()
                 day_of_year = datetime.now().timetuple().tm_yday
                 if hour == 0:
                     qValMax = 240
@@ -248,7 +255,6 @@ class Poller(threading.Thread):
                     sql = "delete from SensorLong where day=?"
                     colValues = [day_of_year,]
                     cursor.execute(sql, colValues)
-                    delYCount += cursor.rowcount
                 sql = "select distinct sensorId from SensorShort"
                 cursor.execute(sql)
                 rows = cursor.fetchall()
@@ -265,12 +271,10 @@ class Poller(threading.Thread):
                         sql = "insert into SensorLong(sensorId, avgValue, minValue, maxValue, day, sixHour) values (?,?,?,?,?,?)"
                         colValues = [key, avgValue, minValue, maxValue, day_of_year, q]
                         cursor.execute(sql, colValues)
-                        insYCount += cursor.rowcount
-                self.log.debug("Statistic: Daily: %d Inserts, %d Deletions - Yearly: %d Inserts, %d Deletions" %
-                               (insDCount, delDCount, insYCount, delYCount))
-            conn.commit()
-            cursor.close()
-            self.ctx.closeDatabase(conn)
+                conn.commit()
+                cursor.close()
+                self.ctx.closeDatabase(conn)
+                self.ctx.dblock.release()
 
             # camera post processing
             for pid in self.extAppInProgress.keys():
@@ -322,6 +326,7 @@ class Poller(threading.Thread):
                 except Exception, e:
                     self.log.error("[Poller] Error executing shell command %s: Reason %s" % (cmd, e))
                     self.log.debug("[Poller] Params were %s", json.dumps(camData))
+
 
             # backup
             nextBackup-=1

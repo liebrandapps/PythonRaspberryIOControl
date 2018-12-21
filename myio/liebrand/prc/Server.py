@@ -4,6 +4,7 @@ import sys
 
 from myio.liebrand.phd.server import Daemon, Server
 from myio.liebrand.prc.Context import Context
+from myio.liebrand.prc.SQLProcessor import SQLProcessor
 from myio.liebrand.prc.local.Kerui import KeruiWrapper
 from myio.liebrand.prc.PRCWebHandler import PRCWebHandler
 from myio.liebrand.prc.PRCApiHandler import PRCApiHandler
@@ -21,6 +22,8 @@ def terminate(sigNo, stackFrame):
         keruiThread.doTerminate()
     if mqtt is not None:
         mqtt.stop()
+    if sqlProcessor is not None:
+        sqlProcessor.doTerminate()
 
 if __name__ == '__main__':
     pollerThread = None
@@ -59,6 +62,9 @@ if __name__ == '__main__':
     if not(status[0] and status[1] and status[2]):
         sys.exit(-1)
     sslConfig =[ ctx.getConfig().general_certFile, ctx.getConfig().general_keyFile ]
+    sqlProcessor = SQLProcessor(ctx)
+    sqlProcessor.start()
+    ctx.sqlProcessor = sqlProcessor
     pollerThread = Poller(ctx)
     pollerThread.start()
     cunoThread = Cuno(ctx)

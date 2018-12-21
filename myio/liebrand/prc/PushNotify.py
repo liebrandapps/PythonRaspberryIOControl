@@ -133,8 +133,8 @@ class PushNotification:
 
         if resp.status_code == 503:
             self.log.warn('[FCM] Unable to send message as Firebase Service is currently unavailable')
-        else:
-            self.log.error('[FCM] Unable to send message to Firebase: %s' % (resp.text.replace('\n', ' '),))
+        elif resp.status_code != 200:
+            self.log.error('[FCM] Unable to send message to Firebase(Code: %d): %s' % (resp.status_code, resp.text.replace('\n', ' '),))
 
 
     def buildMessage(self, topic, title, body, data):

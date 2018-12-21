@@ -2,6 +2,7 @@ import sqlite3
 import sys
 import exceptions
 import logging
+import threading
 import time
 from logging.handlers import RotatingFileHandler
 from os.path import join, exists, dirname, isdir
@@ -72,6 +73,8 @@ class Context:
         self.sdh = SensorDataHandler(self)
         self.threadMonitor = {}
         self.lastThreadCheck = None
+        self.dblock = threading.Lock()
+        self.sqlProcessor = None
 
     def getStatus(self):
         return [self.cfgOk, self.logOk, self.dbOk]
