@@ -74,8 +74,8 @@ if __name__ == '__main__':
             ctx.fs20[k].wrapper.cuno=cunoThread
     else:
         cunoThread = None
-    if len(ctx.kerui)>0:
-        keruiThread = KeruiWrapper(ctx)
+    keruiThread = KeruiWrapper(ctx)
+    if keruiThread.enabled:
         keruiThread.start()
     else:
         keruiThread = None

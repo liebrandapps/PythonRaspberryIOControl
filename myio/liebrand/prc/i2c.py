@@ -44,17 +44,20 @@ class i2cWrapper:
         else:
             targetValue = orgValue & (255 - (1 << int(i2cId[1])))
         done = 3
+        timeout = 1
         while (done > 0):
             # set the value
             self.set(i2cWrapper.Bank[i2cId[0]], targetValue)
-            time.sleep(1)
+            time.sleep(timeout)
             # did the relais actually flip?
             actualValue = self.get(i2cWrapper.Bank[i2cId[0]])
             if (actualValue == targetValue):
                 status = "ok"
                 break
+            timeout = timeout * 2
             done -= 1
             if (done == 0):
+                status = "bogus"
                 # give up
                 break
             time.sleep(0.5)

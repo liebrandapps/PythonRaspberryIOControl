@@ -20,18 +20,21 @@ class KeruiWrapper(threading.Thread):
         self.terminate = False
         cfgDict = {
             "kerui" : {
+                "enable": ['Boolean', False],
                 "usbPort" : ['Array', "/dev/ttyUSB0", "/dev/ttyUSB1" ],
                 "logUnknownDevices" : ['Boolean', True],
                 "filterDuplicates" : ['Boolean', True]
             }
         }
         self.cfg.addScope(cfgDict)
-        self.usbPort = self.cfg.kerui_usbPort
-        self.port = None
-        self.lastHeardOf = {}
-        self.unknownAddresses = []
-        self.logUnknownDevices = self.cfg.kerui_logUnknownDevices
-        self.filterDuplicates = self.cfg.kerui_filterDuplicates
+        self.enabled = self.cfg.kerui_enable
+        if self.enabled:
+            self.usbPort = self.cfg.kerui_usbPort
+            self.port = None
+            self.lastHeardOf = {}
+            self.unknownAddresses = []
+            self.logUnknownDevices = self.cfg.kerui_logUnknownDevices
+            self.filterDuplicates = self.cfg.kerui_filterDuplicates
 
     def run(self):
         self.log.info("[KERUI] Starting Kerui Client")
@@ -51,7 +54,7 @@ class KeruiWrapper(threading.Thread):
                             knownDevice = False
                             for entityId in self.ctx.kerui.keys():
                                 o = self.ctx.kerui[entityId]
-                                if code == o.address:
+                                if code in o.address:
                                     knownDevice = True
                                     if entityId in self.lastHeardOf and (now - self.lastHeardOf[entityId]).seconds<4:
                                         pass

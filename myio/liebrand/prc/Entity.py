@@ -353,7 +353,7 @@ class Kerui(Entity):
     def __init__(self, index, cfg):
         cfgDict = {
             Kerui.SECTION % index: {
-                "address" : ["String", ]
+                "address" : ["Array", ]
             }
         }
         Entity.__init__(self, cfgDict, cfg)
