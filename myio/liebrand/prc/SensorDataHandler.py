@@ -7,6 +7,7 @@ import time
 import hashlib
 import sqlite3
 
+from myio.liebrand.prc import SQLProcessor
 from myio.liebrand.prc.FieldNames import FN
 
 
@@ -57,24 +58,10 @@ class SensorDataHandler:
             #self.log.debug("%s %s %s" % (d, tmpValue, md5))
             self.deviceLastEvent[md5] = now
         # save to db
-        conn = None
-        cursor = None
-        try:
-            now = datetime.now()
-            conn = self.ctx.openDatabase()
-            cursor = conn.cursor()
-            sql = "insert into PushSensorShort(sensorId, value1, value2, atTime) values (?, ?, ?, ?)"
-            colValues = [device.entityId, value1, value2, now]
-            cursor.execute(sql, colValues)
-            conn.commit()
-            cursor.close()
-            self.ctx.closeDatabase(conn)
-        except sqlite3.OperationalError as e:
-            self.log.warn("[SDH] Cannot write to db: %s" % e)
-            if cursor is not None:
-                cursor.close()
-            if conn is not None:
-                self.ctx.closeDatabase(conn)
+        now = datetime.now()
+        sql = "insert into PushSensorShort(sensorId, value1, value2, atTime) values (?, ?, ?, ?)"
+        colValues = [device.entityId, value1, value2, now]
+        self.ctx.sqlProcessor.addSQL([SQLProcessor.SQLProcessor.CMD_SQL, sql, colValues])
 
         # send message
         if not device.disableNotify and self.ctx.fcm.isFCMEnabled:

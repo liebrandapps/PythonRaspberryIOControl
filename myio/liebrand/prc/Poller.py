@@ -395,12 +395,12 @@ class Poller(threading.Thread):
             wrappedFile = None
             for addr in backupPeers.keys():
                 remoteMD5 = backupPeers[addr]
-                if not(item in remoteMD5 and remoteMD5[item] == hash):
+                if not(path in remoteMD5 and remoteMD5[path] == hash):
                     if wrappedFile is None:
                         wrappedFile = self.wrapFile(path)
                     dct = {}
                     dct[FN.FLD_CMD] = FN.CMD_BACKUP
-                    dct[FN.FLD_NAME] = item
+                    dct[FN.FLD_NAME] = path
                     dct[FN.FLD_SERVERID] = self.serverId
                     dct[FN.FLD_DATA] = wrappedFile
                     r = requests.post(addr, json=dct, verify=sslCert)

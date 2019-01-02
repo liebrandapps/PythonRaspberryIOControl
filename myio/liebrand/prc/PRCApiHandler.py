@@ -606,20 +606,21 @@ class PRCApiHandler(Handler):
         if FN.FLD_SERVERID in fields:
             if not (self.cfg.hasKey(self.cfg.scope, 'peerBackup')):
                 dct[FN.FLD_STATUS] = FN.fail
-            backupCfg = self.cfg.general.peerBackup
-            peerBackupPath = os.path.join(backupCfg[0], backupCfg[1], fields[FN.FLD_SERVERID])
-            backupMD5 = {}
-            if os.path.exists(peerBackupPath):
-                for root, dirs, files in os.walk(peerBackupPath, topdown=True):
-                    for name in files:
-                        fileName = (os.path.join(root, name))
-                        md5 = hashlib.md5()
-                        with open(str(fileName), 'rb') as file:
-                            buf = file.read()
-                            md5.update(buf)
-                        backupMD5[name] = md5.hexdigest();
-            dct[FN.FLD_BACKUP] = backupMD5
-            dct[FN.FLD_STATUS] = FN.ok
+            else:
+                backupCfg = self.cfg.general.peerBackup
+                peerBackupPath = os.path.join(backupCfg[0], backupCfg[1], fields[FN.FLD_SERVERID])
+                backupMD5 = {}
+                if os.path.exists(peerBackupPath):
+                    for root, dirs, files in os.walk(peerBackupPath, topdown=True):
+                        for name in files:
+                            fileName = (os.path.join(root, name))
+                            md5 = hashlib.md5()
+                            with open(str(fileName), 'rb') as file:
+                                buf = file.read()
+                                md5.update(buf)
+                            backupMD5[name] = md5.hexdigest()
+                dct[FN.FLD_BACKUP] = backupMD5
+                dct[FN.FLD_STATUS] = FN.ok
             resultCode = 200
         else:
             resultCode = 500

@@ -19,7 +19,7 @@ if __name__ == '__main__':
     paramFile = sys.argv[1]
     with open(paramFile) as f:
         allParams = json.load(f)
-    #os.remove(paramFile)
+    os.remove(paramFile)
     print allParams
     for key in allParams.keys():
         params = allParams[key]

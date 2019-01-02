@@ -51,9 +51,12 @@ class MQTTSubscriber():
         for k in self.ctx.zigbee.keys():
             o = self.ctx.zigbee[k]
             if o.topic == msg.topic and not(msg.topic.endswith(self.suffix)):
+                self.log.debug(msg.payload)
                 dct = json.loads(msg.payload)
                 if 'state' in dct:
                     self.ctx.sdh.process(o, dct['state'].lower())
+                if 'click' in dct:
+                    self.ctx.sdh.process(o, 'click:' + dct['click'].lower())
                 handled = True
         if not handled:
             self.log.debug("[MQTT] OnMessage %s %s" % (msg.topic, str(msg.payload)))
