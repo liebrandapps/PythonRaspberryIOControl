@@ -94,7 +94,10 @@ class SensorDataHandler:
             params['clientCertFile'] = self.cfg.general.clientCertFile
             params['address'] = self.cfg.general.address
             for entity in shellCmd[1:]:
-                if entity.startswith('peer_'):
+                if entity.startswith('_'):
+                    kv = entity[1:].split('=')
+                    params[kv[0]] = kv[1]
+                elif entity.startswith('peer_'):
                     if entity in self.ctx.peer:
                         params[entity] = self.ctx.peer[entity].roamingAddress
                 elif entity in self.ctx.switch or entity in self.ctx.fs20 or entity in self.ctx.netio230:
@@ -102,9 +105,11 @@ class SensorDataHandler:
                     dct = {}
                     self.ctx.api.cmdStatus(fields, dct, self.cfg.general.address)
                     params[entity] = dct[entity]['status']
+                elif entity in self.ctx.ksh300:
+                    params[entity] = self.ctx.api.queryCachedPushSensorValue(entity, returnRaw=True)[0]
                 else:
                     self.log.warn("[SDH] Could not resolve parameter %s for shell command of device %s" %
-                                      (entity, device.getId()))
+                                      (entity, device.entityId))
             fd, path = tempfile.mkstemp()
             with os.fdopen(fd, 'w') as tmpFile:
                 tmpFile.write(json.dumps(params))

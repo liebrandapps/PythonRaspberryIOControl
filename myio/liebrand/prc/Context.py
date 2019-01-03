@@ -75,7 +75,7 @@ class Context:
         self.threadMonitor = {}
         self.lastThreadCheck = None
         self._dblock = threading.Lock()
-        self._dblockTime = 0
+        self._dblockTime = None
         self._dblockOrigin = None
         self.sqlProcessor = None
 
@@ -314,8 +314,8 @@ class Context:
     def acquireDBLock(self, origin):
         now = datetime.now()
         if self._dblock.locked():
-            if self._dblockTime>0 and (now-self._dblockTime).seconds>15:
-                self.log.warn("[CTX] Database locked since %s by %s" % (str(self._dblockTime, self._dblockOrigin)))
+            if self._dblockTime is not None and (now-self._dblockTime).seconds>15:
+                self.log.warn("[CTX] Database locked since %s by %s" % (str(self._dblockTime), self._dblockOrigin))
         self._dblock.acquire()
         self._dblockOrigin = origin
         self._dblockTime = now

@@ -397,7 +397,7 @@ class PRCApiHandler(Handler):
                 elif key.startswith("zigbee"):
                     conn = self.ctx.openDatabase()
                     cursor = conn.cursor()
-                    swdct[FN.FLD_STATUS] = self.queryCachedPushSensorValue(cursor, key)
+                    swdct[FN.FLD_STATUS] = self.queryCachedPushSensorValue(key)
                     cursor.close()
                     self.ctx.closeDatabase(conn)
                 else:
