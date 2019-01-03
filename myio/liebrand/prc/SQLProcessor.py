@@ -28,7 +28,7 @@ class SQLProcessor(threading.Thread):
 
             now = datetime.now()
             while len(self.sqlQueue) > 0:
-                self.ctx.dblock.acquire()
+                self.ctx.acquireDBLock(__file__)
                 sql = self.sqlQueue.pop(0)
                 cmd = sql[0]
                 if cmd == SQLProcessor.CMD_PUSHSENSORLONG:
@@ -38,7 +38,7 @@ class SQLProcessor(threading.Thread):
                 if cmd == SQLProcessor.CMD_SQLMULTI:
                     for s in sql[1]:
                         self.cmdInsert(s[0], s[1])
-                self.ctx.dblock.release()
+                self.ctx.releaseDBLock()
                 time.sleep(0.250)
             self.ctx.threadMonitor[self.__class__.__name__] = now
             self.ctx.checkThreads(now)

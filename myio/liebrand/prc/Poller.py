@@ -111,7 +111,7 @@ class Poller(threading.Thread):
                 combinedDict[FN.FLD_SERVERID] = self.serverId
                 combinedDict[Poller.KEY_TIMESTAMP] = str(int(time.time() * 1000))
                 combinedDict[Poller.KEY_MSGTYPE] = "evtUpdate"
-                self.ctx.dblock.acquire()
+                self.ctx.acquireDBLock(__file__)
                 conn = self.ctx.openDatabase()
                 cursor = conn.cursor()
                 sql = "select rowid, payload from PNQueue"
@@ -139,7 +139,7 @@ class Poller(threading.Thread):
                 conn.commit()
                 cursor.close()
                 self.ctx.closeDatabase(conn)
-                self.ctx.dblock.release()
+                self.ctx.releaseDBLock()
                 if self.ctx.rdb.enabled:
                     accessToken = pn.get_access_token()
                     self.ctx.rdb.updateToken(accessToken, self.ctx.fcm.url, self.ctx.cfg.general_address)
@@ -236,7 +236,7 @@ class Poller(threading.Thread):
 
             # transfer into long table every 6 hours
             if (hour % 6 == 0) and quarter == 0:
-                self.ctx.dblock.acquire()
+                self.ctx.acquireDBLock(__file__)
                 conn = self.ctx.openDatabase()
                 cursor = conn.cursor()
                 day_of_year = datetime.now().timetuple().tm_yday
@@ -274,7 +274,7 @@ class Poller(threading.Thread):
                 conn.commit()
                 cursor.close()
                 self.ctx.closeDatabase(conn)
-                self.ctx.dblock.release()
+                self.ctx.releaseDBLock()
 
             # camera post processing
             for pid in self.extAppInProgress.keys():

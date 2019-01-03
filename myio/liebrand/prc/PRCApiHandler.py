@@ -1054,11 +1054,11 @@ class PRCApiHandler(Handler):
 
     def dbAccess(self, conn=None):
         if conn is None:
-            self.ctx.dblock.acquire()
+            self.ctx.acquireDBLock(__file__)
             conn = self.ctx.openDatabase()
             cursor = conn.cursor()
             return [conn, cursor]
         else:
             conn[1].close()
             self.ctx.closeDatabase(conn[0])
-            self.ctx.dblock.release()
+            self.ctx.releaseDBLock()

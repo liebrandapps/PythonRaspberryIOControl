@@ -4,6 +4,7 @@ import exceptions
 import logging
 import threading
 import time
+from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from os.path import join, exists, dirname, isdir
 from os import access, W_OK, R_OK
@@ -73,7 +74,9 @@ class Context:
         self.sdh = SensorDataHandler(self)
         self.threadMonitor = {}
         self.lastThreadCheck = None
-        self.dblock = threading.Lock()
+        self._dblock = threading.Lock()
+        self._dblockTime = 0
+        self._dblockOrigin = None
         self.sqlProcessor = None
 
     def getStatus(self):
@@ -307,3 +310,15 @@ class Context:
                     # thread has not updated since 15 minutes
                     self.log.warn("[CTX] Thread for class %s has not sent an alive message for %d seconds" %
                                   (k, ((now - self.threadMonitor[k]).seconds)))
+
+    def acquireDBLock(self, origin):
+        now = datetime.now()
+        if self._dblock.locked():
+            if self._dblockTime>0 and (now-self._dblockTime).seconds>15:
+                self.log.warn("[CTX] Database locked since %s by %s" % (str(self._dblockTime, self._dblockOrigin)))
+        self._dblock.acquire()
+        self._dblockOrigin = origin
+        self._dblockTime = now
+
+    def releaseDBLock(self):
+        self._dblock.release()
