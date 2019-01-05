@@ -393,9 +393,9 @@ class PRCApiHandler(Handler):
             if host == targetHost:
                 swdct = {}
                 if key.startswith("switch"):
-                    swdct[FN.FLD_STATUS] = self.switch[key].wrapper.status(self.switch[key].getGPIO())
+                    swdct[FN.FLD_STATUS] = self.switch[key].status()
                 elif key.startswith("fs20"):
-                    swdct[FN.FLD_STATUS] = self.fs20[key].wrapper.status(self.fs20[key].getAddress())
+                    swdct[FN.FLD_STATUS] = self.fs20[key].status()
                 elif key.startswith("zigbee"):
                     conn = self.ctx.openDatabase()
                     cursor = conn.cursor()
@@ -432,11 +432,9 @@ class PRCApiHandler(Handler):
                 toSwitchList = switchId.split(':')
                 for sw in toSwitchList:
                     if sw.startswith("switch"):
-                        gpio = self.switch[sw].getGPIO()
-                        result = self.switch[sw].wrapper.switch(gpio, fields[FN.FLD_VALUE])
+                        result = self.switch[sw].switch(fields[FN.FLD_VALUE])
                     elif sw.startswith("fs20"):
-                        address = self.fs20[sw].getAddress()
-                        result = self.fs20[sw].wrapper.switch(address, fields[FN.FLD_VALUE])
+                        result = self.fs20[sw].switch(fields[FN.FLD_VALUE])
                     elif sw.startswith("zigbee"):
                         self.zigbee[sw].switch(fields[FN.FLD_VALUE])
                         result = [200, FN.ok]
@@ -850,9 +848,9 @@ class PRCApiHandler(Handler):
                         time.sleep(3)
                         outStrg, errStrg = p.communicate()
                         if len(outStrg) > 0:
-                            self.log.debug("CMD [%s] stdout: %s" % (shellCmd[0], outStrg))
+                            self.log.debug("[API] CMD [%s] stdout: %s" % (shellCmd[0], outStrg))
                         if len(errStrg) > 0:
-                            self.log.error(("CMD [%s] stderr: %s" % (shellCmd[0], errStrg)))
+                            self.log.error(("[API] CMD [%s] stderr: %s" % (shellCmd[0], errStrg)))
                     except Exception, e:
                         self.log.error("[API] Error executing shell command %s: Reason %s" % (shellCmd[0], e))
             else:

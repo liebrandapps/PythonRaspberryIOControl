@@ -78,6 +78,7 @@ class Poller(threading.Thread):
                 colValues = [key, value[1], hour, quarter, slot, now]
                 sqls.append([sql, colValues])
                 messageDict[key] = value[1]
+                instance.publish(value[1])
             us = self.ctx.ultrasonic
             for key in us.keys():
                 instance = us[key]
@@ -86,6 +87,7 @@ class Poller(threading.Thread):
                 colValues = [key, value, hour, quarter, slot, now]
                 sqls.append([sql, colValues])
                 messageDict[key] = value
+                instance.publish(value)
             bmp = self.ctx.bmp180
             for key in bmp.keys():
                 instance = bmp[key]
@@ -94,6 +96,7 @@ class Poller(threading.Thread):
                 colValues = [key, value[0], value[1], hour, quarter, slot, now]
                 sqls.append([sql, colValues])
                 messageDict[key] = value
+                instance.publish(value[0], value[1])
 
             self.ctx.sqlProcessor.addSQL([SQLProcessor.CMD_SQLMULTI, sqls])
 

@@ -16,7 +16,8 @@ class MQTTSubscriber():
                 "publishTopic": ["String", "zigbee"],
                 "subscribeTopic": ["String", "#"],
                 "logUnknownDevices": ['Boolean', True],
-                "suffix": ['String', '/set']
+                "suffix": ['String', '/set'],
+                "publish": ['Boolean', False]
             }
         }
         ctx.cfg.addScope(cfgDict)
@@ -30,6 +31,7 @@ class MQTTSubscriber():
         self.subscribeTopic = ctx.cfg.mqtt_subscribeTopic
         self.logUnknownDevices = ctx.cfg.mqtt_logUnknownDevices
         self.suffix = ctx.cfg.mqtt_suffix
+        self.publish = ctx.cfg.mqtt_publish
 
     def start(self):
         if self.enabled:
@@ -47,6 +49,7 @@ class MQTTSubscriber():
         client.subscribe(self.subscribeTopic)
 
     def on_message(self, client, userdata, msg):
+        lenSuffix = len(self.suffix)
         handled = False
         for k in self.ctx.zigbee.keys():
             o = self.ctx.zigbee[k]
@@ -58,6 +61,31 @@ class MQTTSubscriber():
                 if 'click' in dct:
                     self.ctx.sdh.process(o, 'click:' + dct['click'].lower())
                 handled = True
+        for k in self.ctx.switch.keys():
+            o = self.ctx.switch[k]
+            if o.mqttTopic is not None and o.mqttTopic == msg.topic[:len(msg.topic)-lenSuffix] and msg.topic.endswith(self.suffix):
+                self.log.debug(msg.payload)
+                dct = json.loads(msg.payload)
+                if 'state' in dct:
+                    o.switch(dct['state'].lower())
+                handled = True
+        for k in self.ctx.fs20.keys():
+            o = self.ctx.fs20[k]
+            if o.mqttTopic is not None and o.mqttTopic == msg.topic[:len(msg.topic)-lenSuffix] and msg.topic.endswith(self.suffix):
+                self.log.debug(msg.payload)
+                dct = json.loads(msg.payload)
+                if 'state' in dct:
+                    o.switch(dct['state'].lower())
+                handled = True
+        for k in self.ctx.netio.keys():
+            o = self.ctx.netio[k]
+            if o.mqttTopic is not None and o.mqttTopic == msg.topic[:len(msg.topic)-lenSuffix] and msg.topic.endswith(self.suffix):
+                self.log.debug(msg.payload)
+                dct = json.loads(msg.payload)
+                if 'state' in dct:
+                    o.switch(dct['state'].lower())
+                handled = True
+
         if not handled:
             self.log.debug("[MQTT] OnMessage %s %s" % (msg.topic, str(msg.payload)))
 
@@ -73,6 +101,14 @@ class MQTTPublisher:
     def __init__(self, subscriber):
         self.subscriber = subscriber
 
-    def publish(self, address, message):
+    '''
+        publishEvent - if true, the message is only published, if MQTT has been configured to publish events,
+            otherwise only ZigBee Events will be published
+    '''
+    def publish(self, address, message, publishEvent=False):
+        if publishEvent:
+            if not self.subscriber.publish:
+                return
+        self.subscriber.log.debug("[MQTT] Publish %s %s" % (address, message))
         self.subscriber.client.publish(address, message)
 

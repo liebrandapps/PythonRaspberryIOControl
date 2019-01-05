@@ -24,6 +24,8 @@ class Entity:
         cfgDict[self.entityId]['ignore'] = ["Array", None ]
         cfgDict[self.entityId]['googleActionVerbs'] = ["Array", None]
         cfgDict[self.entityId]['googleActionResponses'] = ["Array", None]
+        cfgDict[self.entityId]['mqttTopic'] = ["String", None]
+        cfgDict[self.entityId]['mqttPayload'] = ["String", None]
         cfg.addScope(cfgDict)
         self.shellCmd = getattr(cfg, '%s_shellCmd' % self.entityId)
         self.disableNotify = getattr(cfg, '%s_disableNotify' % self.entityId)
@@ -32,12 +34,15 @@ class Entity:
         self.ignore = getattr(cfg, '%s_ignore' % self.entityId)
         self.googleActionVerbs = getattr(cfg, '%s_googleActionVerbs' % self.entityId)
         self.googleActionResponses = getattr(cfg, '%s_googleActionResponses' % self.entityId)
+        self.mqttTopic = getattr(cfg, '%s_mqttTopic' % self.entityId)
+        self.mqttPayload = getattr(cfg, '%s_mqttPayload' % self.entityId)
         self.name = {}
         for l in Entity.LOCALE:
             key = Entity.NAME % l
             if getattr(cfg, '%s_%s' % (self.entityId, key)) is not None:
                 self.name[l] = getattr(cfg, '%s_%s' % (self.entityId, key))
         self.wrapper = None
+        self.ctx = None
 
     def getName(self, locale):
         if locale in self.name:
@@ -50,6 +55,8 @@ class Entity:
             else:
                 return("?")
 
+    def publish(self, value, value2=None):
+        pass
 
 
 class Peer(Entity):
@@ -87,9 +94,16 @@ class Switch(Entity):
         Entity.__init__(self, cfgDict, cfg)
         self.gpio = getattr(cfg, '%s_gpio' % self.entityId)
 
-    def getGPIO(self):
-        return self.gpio
+    def switch(self, value):
+        result = self.wrapper.switch(self.gpio, value)
+        if self.mqttTopic is not None and self.ctx.mqtt is not None:
+            dct = {}
+            dct['state']=value.upper()
+            self.ctx.mqtt.publish(self.mqttTopic, json.dumps(dct), publishEvent=True)
+        return result
 
+    def status(self):
+        return self.wrapper.status(self.gpio)
 
 
 class FS20(Entity):
@@ -107,11 +121,19 @@ class FS20(Entity):
         self.address = getattr(cfg, '%s_address' % self.entityId)
         self.useCuno = getattr(cfg, '%s_useCuno' % self.entityId)
 
-    def getAddress(self):
-        return self.address
-
     def getUseCuno(self):
         return self.useCuno
+
+    def switch(self, value):
+        result = self.wrapper.switch(self.address, value)
+        if self.mqttTopic is not None and self.ctx.mqtt is not None:
+            dct = {}
+            dct['state']=value.upper()
+            self.ctx.mqtt.publish(self.mqttTopic, json.dumps(dct), publishEvent=True)
+        return result
+
+    def status(self):
+        return self.wrapper.status(self.address)
 
 
 class UltraSonic(Entity):
@@ -140,6 +162,12 @@ class UltraSonic(Entity):
     def measure(self):
         return self.wrapper.measure()
 
+    def publish(self, value):
+        if self.mqttTopic is not None and self.ctx.mqtt is not None and self.mqttPayload is not None:
+            msg = self.mqttPayload % value
+            self.ctx.mqtt.publish(self.mqttTopic, msg, publishEvent=True)
+
+
 class Sensor18B20(Entity):
 
     SECTION = "temperature_%d"
@@ -165,6 +193,11 @@ class Sensor18B20(Entity):
 
     def measure(self):
         return self.wrapper.measure(self.address)
+
+    def publish(self, value):
+        if self.mqttTopic is not None and self.ctx.mqtt is not None and self.mqttPayload is not None:
+            msg = self.mqttPayload % value
+            self.ctx.mqtt.publish(self.mqttTopic, msg, publishEvent=True)
 
 
 class Netio230(Entity):
@@ -193,9 +226,14 @@ class Netio230(Entity):
 
     def switch(self, newValue):
         if newValue == "on":
-            return self.wrapper.turnOn(self.accessId, self.address)
+            result = self.wrapper.turnOn(self.accessId, self.address)
         else:
-            return self.wrapper.turnOff(self.accessId, self.address)
+            result = self.wrapper.turnOff(self.accessId, self.address)
+        if self.mqttTopic is not None and self.ctx.mqtt is not None:
+            dct = {}
+            dct['state']=newValue.upper()
+            self.ctx.mqtt.publish(self.mqttTopic, json.dumps(dct), publishEvent=True)
+        return result
 
 class HMS100T(Entity):
 
@@ -212,6 +250,11 @@ class HMS100T(Entity):
 
     def getAddress(self):
         return self.address
+
+    def publish(self, value, value2=None):
+        if self.mqttTopic is not None and self.ctx.mqtt is not None and self.mqttPayload is not None:
+            msg = self.mqttPayload % value
+            self.ctx.mqtt.publish(self.mqttTopic, msg, publishEvent=True)
 
 
 class HMS100TF(Entity):
@@ -230,6 +273,12 @@ class HMS100TF(Entity):
     def getAddress(self):
         return self.address
 
+    def publish(self, value, value2=None):
+        if self.mqttTopic is not None and self.ctx.mqtt is not None and self.mqttPayload is not None:
+            msg = self.mqttPayload % (value, value2)
+            self.ctx.mqtt.publish(self.mqttTopic, msg, publishEvent=True)
+
+
 class KSH300(Entity):
 
     SECTION = "ksh300_%d"
@@ -245,6 +294,12 @@ class KSH300(Entity):
 
     def getAddress(self):
         return self.address
+
+    def publish(self, value, value2=None):
+        if self.mqttTopic is not None and self.ctx.mqtt is not None and self.mqttPayload is not None:
+            msg = self.mqttPayload % (value, value2)
+            self.ctx.mqtt.publish(self.mqttTopic, msg, publishEvent=True)
+
 
 class FS20Sensor(Entity):
 
@@ -317,6 +372,11 @@ class BMP180(Entity):
         }
         Entity.__init__(self, cfgDict, cfg)
 
+    def publish(self, value, value2):
+        if self.mqttTopic is not None and self.ctx.mqtt is not None and self.mqttPayload is not None:
+            msg = self.mqttPayload % (value, value2)
+            self.ctx.mqtt.publish(self.mqttTopic, msg, publishEvent=True)
+
 
 class Awning(Entity):
 
@@ -361,6 +421,10 @@ class Kerui(Entity):
 
     def message(self, value, value2=None):
         return "%s [KERUI] Sensor triggered {%s}" % (self.getName("en"), self.address)
+
+    def publish(self, value, value2=None):
+        if self.mqttTopic is not None and self.ctx.mqtt is not None and self.mqttPayload is not None:
+            self.ctx.mqtt.publish(self.mqttTopic, self.mqttPayload, publishEvent=True)
 
 class Zigbee(Entity):
 

@@ -83,8 +83,9 @@ if __name__ == '__main__':
     if mqtt.enabled:
         mqtt.start()
         mqttPub = MQTTPublisher(mqtt)
+        ctx.mqtt = mqttPub
         for k in ctx.zigbee.keys():
-            ctx.zigbee[k].wrapper=mqttPub
+            ctx.zigbee[k].wrapper = mqttPub
     else:
         mqtt = None
     prcApiHandler = PRCApiHandler(ctx)

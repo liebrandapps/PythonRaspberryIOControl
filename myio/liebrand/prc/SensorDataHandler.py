@@ -8,6 +8,7 @@ import hashlib
 import sqlite3
 
 import requests
+from requests import ConnectionError
 
 from myio.liebrand.prc import SQLProcessor
 from myio.liebrand.prc.FieldNames import FN
@@ -78,6 +79,9 @@ class SensorDataHandler:
                 self.pushNotify.addNotificationtoMessage(payload, device.getName('en'), "")
             self.pushNotify.pushMessage(payload, device.prio)
 
+        # publish via MQTT
+        device.publish(value1, value2=value2)
+
         # trigger script
         shellCmd = device.shellCmd
         if shellCmd is not None:
@@ -140,15 +144,18 @@ class SensorDataHandler:
         if value2 is not None:
             dct[FN.FLD_VALUE2] = value2
         dct[FN.FLD_CMD] = FN.CMD_FORWARD
-        r = requests.post(forwardTo, json=dct, verify=self.cfg.general_clientCertFile)
-        if r.status_code == 200:
-            resultDct = json.loads(r.text)
-            if resultDct[FN.FLD_STATUS] == FN.fail:
-                self.log.warn("[SDH] Forward to %s failed with message %s" % (forwardTo, resultDct[FN.FLD_MESSAGE]))
+        try:
+            r = requests.post(forwardTo, json=dct, verify=self.cfg.general_clientCertFile)
+            if r.status_code == 200:
+                resultDct = json.loads(r.text)
+                if resultDct[FN.FLD_STATUS] == FN.fail:
+                    self.log.warn("[SDH] Forward to %s failed with message %s" % (forwardTo, resultDct[FN.FLD_MESSAGE]))
+                else:
+                    self.log.debug("[SDH] Forward %s to %s" % (entityId, forwardTo, ))
             else:
-                self.log.debug("[SDH] Forward %s to %s" % (entityId, forwardTo, ))
-        else:
-            self.log.warn("[SDH] Forward to %s failed with code %d"  % (forwardTo, r.status_code))
+                self.log.warn("[SDH] Forward to %s failed with code %d"  % (forwardTo, r.status_code))
+        except ConnectionError:
+            self.log.warn("[SDH] Forwarding request to %s failed. (Did the remote server crash?)" % (forwardTo))
         return
 
 

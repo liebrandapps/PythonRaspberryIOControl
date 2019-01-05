@@ -78,6 +78,7 @@ class Context:
         self._dblockTime = None
         self._dblockOrigin = None
         self.sqlProcessor = None
+        self.mqtt = None
 
     def getStatus(self):
         return [self.cfgOk, self.logOk, self.dbOk]
@@ -198,13 +199,15 @@ class Context:
             i2c = i2cWrapper()
             for index in range(switchCount):
                 sw = Switch(index + 1, self.cfg)
-                sw.wrapper=i2c
+                sw.wrapper = i2c
+                sw.ctx = self
                 self.switch[sw.entityId] = sw
 
         if fs20Count>0:
             for index in range(fs20Count):
                 fs = FS20(index + 1, self.cfg)
-                fs.wrapper=Fs20Wrapper(self.cfg.fs20Data)
+                fs.wrapper = Fs20Wrapper(self.cfg.fs20Data)
+                fs.ctx = self
                 self.fs20[fs.entityId] = fs
 
         if ultrasonicCount>0:
@@ -212,6 +215,7 @@ class Context:
             for index in range(ultrasonicCount):
                 wl = UltraSonic(index + 1, self.cfg)
                 wl.wrapper=usWrapper
+                wl.ctx = self
                 self.ultrasonic[wl.entityId] = wl
 
         if temperatureCount>0:
@@ -219,6 +223,7 @@ class Context:
             for index in range(temperatureCount):
                 t = Sensor18B20(index + 1, self.cfg)
                 t.wrapper=tempWrapper
+                t.ctx = self
                 self.sensor18B20[t.entityId] = t
 
         if netioCount>0:
@@ -226,18 +231,22 @@ class Context:
             for index in range(netioCount):
                 n = Netio230(index + 1, self.cfg)
                 n.wrapper=netioWrapper
+                n.ctx = self
                 self.netio230[n.entityId] = n
 
         for index in range(hms100tCount):
             h = HMS100T(index+1, self.cfg)
+            h.ctx = self
             self.hms100t[h.entityId] = h
 
         for index in range(hms100tfCount):
             h = HMS100TF(index+1, self.cfg)
+            h.ctx = self
             self.hms100tf[h.entityId] = h
 
         for index in range(ksh300Count):
             k = KSH300(index+1, self.cfg)
+            k.ctx = self
             self.ksh300[k.entityId] = k
 
         for index in range(fs20SensorCount):
@@ -259,6 +268,7 @@ class Context:
         for index in range(bmp180Count):
             c = BMP180(index+1, self.cfg)
             c.wrapper=BMP180Wrapper()
+            c.ctx = self
             self.bmp180[c.entityId] = c
 
         if awningCount>0:
@@ -276,11 +286,13 @@ class Context:
         if keruiCount>0:
             for index in range(keruiCount):
                 o = Kerui(index+1, self.cfg)
+                o.ctx = self
                 self.kerui[o.entityId] = o
 
         if zigbeeCount>0:
             for index in range(zigbeeCount):
                 o = Zigbee(index+1, self.cfg)
+                o.ctx = self
                 self.zigbee[o.entityId] = o
 
 
