@@ -55,6 +55,7 @@ class FN:
     FLD_UPTIME = "uptime"
     FLD_USER = "user"
     FLD_VALUE = "value"
+    FLD_VALUE2 = "value2"
     FLD_ZIGBEECOUNT = "zigbeeCount"
     CMD_ABOUT = "about"
     CMD_CONFIG = "config"
@@ -76,6 +77,7 @@ class FN:
     CMD_PLAYTLVIDEO = "playTimelapseVideo"
     CMD_SHOWSNAPSHOT = "showSnapshot"
     CMD_RUNSHELLCMD = "runShellCmd"
+    CMD_FORWARD = "forward"
     FLAG_ROAMING = "roaming"
 
     ok = "ok"

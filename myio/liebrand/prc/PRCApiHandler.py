@@ -138,6 +138,8 @@ class PRCApiHandler(Handler):
                 resultCode, dct = self.cmdShowSnapshot(fields, dct, host)
             elif fields[FN.FLD_CMD] == FN.CMD_RUNSHELLCMD:
                 resultCode, dct = self.cmdShellCmd(fields, dct, host)
+            elif fields[FN.FLD_CMD] == FN.CMD_FORWARD:
+                resultCode, dct = self.cmdForward(fields, dct, host)
             else:
                 resultCode = 400
                 dct[FN.FLD_STATUS] = FN.fail
@@ -866,6 +868,38 @@ class PRCApiHandler(Handler):
                                                                         FN.FLD_HOST)
         return [resultCode, dct]
 
+    def cmdForward(self, fields, dct, host):
+        if FN.FLD_ADDRESS in fields and FN.FLD_ID in fields and FN.FLD_VALUE in fields:
+            device = None
+            entityId = fields[FN.FLD_ID]
+            if entityId.startswith('kerui_'):
+                for d in self.kerui.keys():
+                    if fields[FN.FLD_ADDRESS] in self.kerui[d].address:
+                        device = self.kerui[d]
+                        break
+            if entityId.startswith('zigbee_'):
+                for d in self.zigbee.keys():
+                    if self.zigbee[d].address == fields[FN.FLD_ADDRESS]:
+                        device = self.zigbee[d]
+                        break
+            resultCode = 200
+            if device is None:
+                dct[FN.FLD_STATUS] = FN.fail
+                dct[FN.FLD_MESSAGE] = "Unable to local a configured device with address %s (remote ID was %s)" % \
+                                      (fields[FN.FLD_ADDRESS], entityId)
+            else:
+                value2 = None
+                if FN.FLD_VALUE2 in fields:
+                    value2 = fields[FN.FLD_VALUE2]
+                self.log.debug("[API] %s" % (device.message(fields[FN.FLD_VALUE], value2)))
+                self.ctx.sdh.process(device, fields[FN.FLD_VALUE], value2=value2)
+                dct[FN.FLD_STATUS] = FN.ok
+        else:
+            resultCode = 500
+            dct[FN.FLD_STATUS] = FN.fail
+            dct[FN.FLD_MESSAGE] = "Missing field(s) in JSON (%s &| %s &| %s)" % (FN.FLD_ADDRESS,
+                                                                           FN.FLD_VALUE, FN.FLD_ID)
+        return [resultCode, dct]
 
     def requestPeerConfig(self, address, locale):
         resultDct = None

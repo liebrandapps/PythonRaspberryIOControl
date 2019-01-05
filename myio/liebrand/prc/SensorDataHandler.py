@@ -7,6 +7,8 @@ import time
 import hashlib
 import sqlite3
 
+import requests
+
 from myio.liebrand.prc import SQLProcessor
 from myio.liebrand.prc.FieldNames import FN
 
@@ -47,7 +49,7 @@ class SensorDataHandler:
         md5 = m.hexdigest()
         #self.log.debug("%s %s %s" % (device.getId(), tmpValue, md5))
         #self.log.debug(self.deviceLastEvent)
-        if md5 in self.deviceLastEvent and (now - self.deviceLastEvent[md5]).seconds < 15:
+        if md5 in self.deviceLastEvent and (now - self.deviceLastEvent[md5]).days == 0 and (now - self.deviceLastEvent[md5]).seconds < 15:
             return
         self.deviceLastEvent[md5] = now
         #self.log.debug(device.peerSensors)
@@ -118,6 +120,36 @@ class SensorDataHandler:
                 self.shellCmdInProgress[p.pid] = [ datetime.now(), p, shellCmd ]
             except Exception, e:
                 self.log.error("[SDH] Error executing shell command %s: Reason %s" % (shellCmd, e))
+
+    def forward(self, entityId, address, forwardTo, value1, value2=None):
+        now = datetime.now()
+        tmpValue = str(value1)
+        if value2 is not None:
+            tmpValue = "%s | %s" % (str(value1), str(value2))
+        m = hashlib.md5()
+        m.update(str(entityId) + tmpValue)
+        md5 = m.hexdigest()
+        if md5 in self.deviceLastEvent and (now - self.deviceLastEvent[md5]).days == 0 and (now - self.deviceLastEvent[md5]).seconds < 15:
+            return
+        self.deviceLastEvent[md5] = now
+        self.log.debug("[SDH] Forwarding Code %s - %s to %s" % (entityId, address, forwardTo))
+        dct = {}
+        dct[FN.FLD_ID] = entityId
+        dct[FN.FLD_ADDRESS] = address
+        dct[FN.FLD_VALUE] = value1
+        if value2 is not None:
+            dct[FN.FLD_VALUE2] = value2
+        dct[FN.FLD_CMD] = FN.CMD_FORWARD
+        r = requests.post(forwardTo, json=dct, verify=self.cfg.general_clientCertFile)
+        if r.status_code == 200:
+            resultDct = json.loads(r.text)
+            if resultDct[FN.FLD_STATUS] == FN.fail:
+                self.log.warn("[SDH] Forward to %s failed with message %s" % (forwardTo, resultDct[FN.FLD_MESSAGE]))
+            else:
+                self.log.debug("[SDH] Forward %s to %s" % (entityId, forwardTo, ))
+        else:
+            self.log.warn("[SDH] Forward to %s failed with code %d"  % (forwardTo, r.status_code))
+        return
 
 
     def checkForLeftOverProcesses(self):

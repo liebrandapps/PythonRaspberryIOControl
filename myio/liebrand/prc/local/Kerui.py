@@ -23,7 +23,8 @@ class KeruiWrapper(threading.Thread):
                 "enable": ['Boolean', False],
                 "usbPort" : ['Array', "/dev/ttyUSB0", "/dev/ttyUSB1" ],
                 "logUnknownDevices" : ['Boolean', True],
-                "filterDuplicates" : ['Boolean', True]
+                "filterDuplicates" : ['Boolean', True],
+                "forward": ['String', ]
             }
         }
         self.cfg.addScope(cfgDict)
@@ -35,6 +36,7 @@ class KeruiWrapper(threading.Thread):
             self.unknownAddresses = []
             self.logUnknownDevices = self.cfg.kerui_logUnknownDevices
             self.filterDuplicates = self.cfg.kerui_filterDuplicates
+            self.forward = self.cfg.kerui_forward
 
     def run(self):
         self.log.info("[KERUI] Starting Kerui Client")
@@ -44,6 +46,7 @@ class KeruiWrapper(threading.Thread):
         retryOnPorts = 10
         while not self.terminate:
             try:
+                self.log.debug("[KERUI] Connecting receiver on port %s" % (self.usbPort[portIdx]))
                 self.port = serial.Serial(self.usbPort[portIdx], baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=30)
                 while not self.terminate:
                     try:
@@ -60,12 +63,16 @@ class KeruiWrapper(threading.Thread):
                                         pass
                                     else:
                                         self.lastHeardOf[entityId] = now
+                                        self.log.debug(o.message("!!!"))
                                         self.ctx.sdh.process(o, "!!!")
                                     break
-                            if not knownDevice and self.logUnknownDevices:
-                                if code not in self.unknownAddresses or not self.filterDuplicates:
-                                    self.log.info("[KERUI] Unknown device ID %s", code)
-                                    self.unknownAddresses.append(code)
+                            if not knownDevice:
+                                if self.forward is not None and len(self.forward):
+                                    self.ctx.sdh.forward('kerui_', code, self.forward, "!!!")
+                                if self.logUnknownDevices:
+                                    if code not in self.unknownAddresses or not self.filterDuplicates:
+                                        self.log.info("[KERUI] Unknown device ID %s", code)
+                                        self.unknownAddresses.append(code)
                             if (now - lastCleanup).seconds > 86400:
                                 # reset unknown devices and lastHeardOf every 24 hours to prevent filling up memory
                                 # implication is that unknown devices appear basically once a day
@@ -74,7 +81,7 @@ class KeruiWrapper(threading.Thread):
                         self.ctx.threadMonitor[self.__class__.__name__] = now
                         self.ctx.checkThreads(now)
                     except TypeError:
-                        pass
+                        time.sleep(1)
             except serial.SerialException, e:
                 if e.args[0] == errno.ENOENT:
                     portIdx = (portIdx+1) % len(self.usbPort)

@@ -359,6 +359,9 @@ class Kerui(Entity):
         Entity.__init__(self, cfgDict, cfg)
         self.address = getattr(cfg, '%s_address' % self.entityId)
 
+    def message(self, value, value2=None):
+        return "%s [KERUI] Sensor triggered {%s}" % (self.getName("en"), self.address)
+
 class Zigbee(Entity):
 
     SECTION = "zigbee_%d"
@@ -373,6 +376,10 @@ class Zigbee(Entity):
         Entity.__init__(self, cfgDict, cfg)
         self.topic = getattr(cfg, "%s_topic" % self.entityId)
         self.suffix = getattr(cfg, "%s_suffix" % self.entityId)
+
+    def message(self, value, value2=None):
+        return "%s [ZIGBEE] Value %s {%s}" % (self.getName('en'), self.value, self.topic)
+
 
     def switch(self, value):
         if value == 'on':
