@@ -57,6 +57,8 @@
     <a id="txt_2" style="text-align:left;" href="#" onclick="showArea('fs20');">Switches<span style="float:right;">[FS20]</span></a>
 	<a id="txt_16" style="text-align:left;" href="#" onclick="showArea('netio');">Switches<span style="float:right;">[NetIO230]</span></a>
 	<a id="txt_38" style="text-align:left;" href="#" onclick="showArea('zigbee');">Switches<span style="float:right;">[ZIGBEE]</span></a>
+	<a id="txt_39" style="text-align:left;" href="#" onclick="showArea('yeelight');">Switches<span style="float:right;">[YEELIGHT]</span></a>
+	<a id="txt_42" style="text-align:left;" href="#" onclick="showArea('sonoff');">Switches<span style="float:right;">[SONOFF]</span></a>
     <a id="txt_4" style="text-align:left;" href="#" onclick="showArea('ultrasonic');">Distance<span style="float:right;">[Ultrasonic]</span></a>
     <a id="txt_6" style="text-align:left;" href="#" onclick="showArea('temperature');">Temperature<span style="float:right;">[DS18B20]</span></a>
     <a id="txt_17" style="text-align:left;" href="#" onclick="showArea('hms100t');">Temperature<span style="float:right;">[HMS100T]</span></a>
@@ -98,6 +100,10 @@
 				<div id="line_netioCount"><span><a>NetIO230 Actors</a><a style="float:right;" id="netioCount"></a></span>
 					<br></div>
 				<div id="line_zigbeeCount"><span><a>Zigbee Actors</a><a style="float:right;" id="zigbeeCount"></a></span>
+					<br></div>
+				<div id="line_yeelightCount"><span><a>Yeelight Actors</a><a style="float:right;" id="yeelightCount"></a></span>
+					<br></div>
+				<div id="line_sonoffCount"><span><a>Sonoff Actors</a><a style="float:right;" id="sonoffCount"></a></span>
 					<br></div>
 				<div id="line_ultrasonicCount"><span><a>Ultrasonic</a><a style="float:right;" id="ultrasonicCount"></a></span>
 					<br></div>
@@ -240,7 +246,6 @@
 		</div>
 	</div>
 	<hr/>
-
 </div>
 <div id="camera" style="display:none;">
 	<h1 id="txt_25">Cameras</h1>
@@ -276,8 +281,6 @@
 		</div>
 	</div>
 	<hr/>
-
-	</div>
 </div>
 <div id="zigbee" class="onoffs" style="display:none;">
 	<h1 id="txt_36">Zigbee Actors</h1>
@@ -291,9 +294,34 @@
 		</div>
 	</div>
 	<hr/>
-
-	</div>
 </div>
+<div id="yeelight" class="onoffs" style="display:none;">
+	<h1 id="txt_40">Yeelight Actors</h1>
+	<hr/>
+	<div class="container">
+  		<div class="row">
+    		<div id="yeelight_container_left" class="column-50l">
+			</div>
+    		<div id="yeelight_container_right" class="column-50r">
+			</div>
+		</div>
+	</div>
+	<hr/>
+</div>
+<div id="sonoff" class="onoffs" style="display:none;">
+	<h1 id="txt_41">Sonoff Actors</h1>
+	<hr/>
+	<div class="container">
+  		<div class="row">
+    		<div id="sonoff_container_left" class="column-50l">
+			</div>
+    		<div id="sonoff_container_right" class="column-50r">
+			</div>
+		</div>
+	</div>
+	<hr/>
+</div>
+
 
 
 <div id="switch_TEMPLATE" style="display:none;">

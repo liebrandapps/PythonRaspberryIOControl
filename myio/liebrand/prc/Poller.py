@@ -78,7 +78,7 @@ class Poller(threading.Thread):
                 colValues = [key, value[1], hour, quarter, slot, now]
                 sqls.append([sql, colValues])
                 messageDict[key] = value[1]
-                instance.publish(value[1])
+                instance.publish(float(value[1]))
             us = self.ctx.ultrasonic
             for key in us.keys():
                 instance = us[key]

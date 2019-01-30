@@ -15,10 +15,10 @@ var MAX_AWNING = 0;
 var MAX_RPICAM = 0;
 var MAX_KERUI = 0;
 var MAX_ZIGBEE = 0;
+var MAX_YEELIGHT = 0;
+var MAX_SONOFF = 0;
 var updateInProgress = false;
 var url = "/prcapi"
-var hostMap = {};
-var localIdMap = {};
 var pushMap = {};
 var chartData;
 var currentChart;
@@ -26,6 +26,7 @@ var menuSelected = false;
 var popupIsShowing = false;
 var historyRowCount = 0;
 var offlineMode = false;
+var delta = {};
 
 
 
@@ -160,11 +161,12 @@ function initUI() {
 
                 const arrId = [ "switchCount", "fs20Count", "ultrasonicCount", "temperatureCount", "netioCount",
                                 "cameraCount", "rpicamCount", "hms100tCount", "hms100tfCount", "ksh300Count",
-                                "fs20SensorCount", "bmp180Count", "awningCount", "keruiCount", "zigbeeCount" ];
+                                "fs20SensorCount", "bmp180Count", "awningCount", "keruiCount", "zigbeeCount",
+                                 "yeelightCount", "sonoffCount"];
                 let arrCount = [jsn.switchCount, jsn.fs20Count, jsn.ultrasonicCount, jsn.temperatureCount,
                                 jsn.netioCount, jsn.cameraCount, jsn.rpicamCount, jsn.hms100tCount, jsn.hms100tfCount,
                                 jsn.ksh300Count, jsn.fs20SensorCount, jsn.bmp180Count, jsn.awningCount,
-                                jsn.keruiCount, jsn.zigbeeCount ];
+                                jsn.keruiCount, jsn.zigbeeCount, jsn.yeelightCount, jsn.sonoffCount ];
                 let idx = 0;
                 while(idx<arrId.length) {
                     jsn.address.forEach(server => {
@@ -193,10 +195,17 @@ function initUI() {
                 }
 
                 var html = document.getElementById("switch_TEMPLATE").innerHTML;
+                var reference;
                 var parent;
                 for(i=0; i<arrCount[0]; i++) {
                     parent = document.getElementById((i<8)? "switch_container_left" : "switch_container_right")
-                    parent.innerHTML += html.replace(/switch_ID/g, "switch_"  + String(i+1));
+                    reference = "switch_"  + String(i+1);
+                    parent.innerHTML += html.replace(/switch_ID/g, reference);
+                    let tmp = window.localStorage.getItem(reference);
+                    if(tmp!=null) {
+                        let jsn2 = JSON.parse(tmp);
+                        updateSwitch(reference, jsn2.name, jsn2.status);
+                    }
                 }
                 for(i=0; i<arrCount[1]; i++) {
                     parent = document.getElementById((i<8)? "fs20_container_left" : "fs20_container_right")
@@ -205,6 +214,14 @@ function initUI() {
                 for(i=0; i<arrCount[14]; i++) {
                     parent = document.getElementById((i<8)? "zigbee_container_left" : "zigbee_container_right")
                     parent.innerHTML += html.replace(/switch_ID/g, "zigbee_"  + String(i+1));
+                }
+                for(i=0; i<arrCount[15]; i++) {
+                    parent = document.getElementById((i<8)? "yeelight_container_left" : "yeelight_container_right")
+                    parent.innerHTML += html.replace(/switch_ID/g, "yeelight_"  + String(i+1));
+                }
+                for(i=0; i<arrCount[16]; i++) {
+                    parent = document.getElementById((i<8)? "sonoff_container_left" : "sonoff_container_right")
+                    parent.innerHTML += html.replace(/switch_ID/g, "sonoff_"  + String(i+1));
                 }
                 for(i=0; i<arrCount[4]; i++) {
                     parent = document.getElementById((i<8)? "netio_container_left" : "netio_container_right")
@@ -292,6 +309,8 @@ function showArea(areaId) {
     areaIds.add("awning");
     areaIds.add("kerui");
     areaIds.add("zigbee");
+    areaIds.add("yeelight");
+    areaIds.add("sonoff");
     areaIds.forEach(divId => {
         if (areaId === divId) {
             document.getElementById(divId).style.display = 'block';
@@ -313,9 +332,11 @@ function handleCheck(checkbox) {
             value = "on";
         }
         var host = "";
-        if(hostMap.hasOwnProperty(checkbox.name)) {
-            host = hostMap[checkbox.name];
-            switchId = localIdMap[checkbox.name];
+        let item = window.localStorage.getItem(checkbox.name);
+        if(item!=null) {
+            let map = JSON.parse(item);
+            host = map['host'];
+            switchId = map['localId'];
         }
         else {
             switchId = checkbox.name
@@ -353,9 +374,11 @@ function handleCheck(checkbox) {
 
 function refreshSwitchValue(switchId) {
     var host = "";
-    if(hostMap.hasOwnProperty(switchId)) {
-        host = hostMap[switchId];
-        switchId = localIdMap[switchId];
+    let item = window.localStorage.getItem(switchId);
+    if(item!=null) {
+        let map = JSON.parse(item);
+        host = map['host'];
+        switchId = map['localId'];
     };
     var params = { command : "status", id : switchId, host : host };
     //console.log(params);
@@ -396,8 +419,9 @@ function requestConfig() {
                 var jsn = JSON.parse(this.responseText)
                 console.log(jsn)
                 if(jsn.status === 'ok') {
-                    hostMap = {};
-                    localIdMap = {};
+                    let now = new Date();
+                    let nowLong = now.getTime();
+                    let nowTime = now.toLocaleString();
                     var cnt = jsn.peerCount;
                     for(i=0; i<MAX_PEER; i++) {
                         reference = "peer_" + String(i+1);
@@ -420,14 +444,18 @@ function requestConfig() {
                             var reference = "switch_"  + String(i+1);
                             document.getElementById(reference).style.display = 'block';
                             updateSwitch(reference, jsn[reference].name, jsn[reference].status);
-                            hostMap[reference] = jsn[reference].host;
-                            localIdMap[reference] = jsn[reference].localId;
                             var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
                             var map = {};
                             map['docId'] = reference;
                             map['docType'] = 'S';
                             map['name'] = jsn[reference].name;
-                            pushMap[pushKey] = map;
+                            map['status'] = jsn[reference].status;
+                            map['host'] = jsn[reference].host;
+                            map['localId'] = jsn[reference].localId;
+                            map['lastUpdate'] = nowTime;
+                            map['timestamp'] = nowLong;
+                            pushMap[pushKey] = reference;
+                            window.localStorage.setItem(reference, JSON.stringify(map));
                         }
                     }
                     MAX_FS20 = jsn.fs20Count;
@@ -440,14 +468,17 @@ function requestConfig() {
                             reference = "fs20_"  + String(i+1);
                             document.getElementById(reference).style.display = 'block';
                             updateSwitch(reference, jsn[reference].name, jsn[reference].status);
-                            hostMap[reference] = jsn[reference].host;
-                            localIdMap[reference] = jsn[reference].localId;
                             var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
                             var map = {};
                             map['docId'] = reference;
                             map['docType'] = 'F';
                             map['name'] = jsn[reference].name;
-                            pushMap[pushKey] = map;
+                            map['host'] = jsn[reference].host;
+                            map['localId'] = jsn[reference].localId;
+                            map['lastUpdate'] = nowTime;
+                            map['timestamp'] = nowLong;
+                            pushMap[pushKey] = reference;
+                            window.localStorage.setItem(reference, JSON.stringify(map));
                         }
                     }
                     MAX_NETIO = jsn.netioCount;
@@ -460,14 +491,17 @@ function requestConfig() {
                             reference = "netio_"  + String(i+1);
                             document.getElementById(reference).style.display = 'block';
                             updateSwitch(reference, jsn[reference].name, jsn[reference].status);
-                            hostMap[reference] = jsn[reference].host;
-                            localIdMap[reference] = jsn[reference].localId;
                             var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
                             var map = {};
                             map['docId'] = reference;
                             map['docType'] = 'N';
                             map['name'] = jsn[reference].name;
-                            pushMap[pushKey] = map;
+                            map['host'] = jsn[reference].host;
+                            map['localId'] = jsn[reference].localId;
+                            map['lastUpdate'] = nowTime;
+                            map['timestamp'] = nowLong;
+                            pushMap[pushKey] = reference;
+                            window.localStorage.setItem(reference, JSON.stringify(map));
                         }
                     }
                     MAX_ZIGBEE = jsn.zigbeeCount;
@@ -480,14 +514,63 @@ function requestConfig() {
                             reference = "zigbee_"  + String(i+1);
                             document.getElementById(reference).style.display = 'block';
                             updateSwitch(reference, jsn[reference].name, jsn[reference].status);
-                            hostMap[reference] = jsn[reference].host;
-                            localIdMap[reference] = jsn[reference].localId;
                             var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
                             var map = {};
                             map['docId'] = reference;
-                            map['docType'] = 'Z';
+                            map['docType'] = 'zigbee_';
                             map['name'] = jsn[reference].name;
-                            pushMap[pushKey] = map;
+                            map['host'] = jsn[reference].host;
+                            map['localId'] = jsn[reference].localId;
+                            map['lastUpdate'] = nowTime;
+                            map['timestamp'] = nowLong;
+                            pushMap[pushKey] = reference;
+                            window.localStorage.setItem(reference, JSON.stringify(map));
+                        }
+                    }
+                    MAX_YEELIGHT = jsn.yeelightCount;
+                    if(MAX_YEELIGHT == 0) {
+                        document.getElementById("yeelight").style.display = 'none';
+                        document.getElementById("txt_40").style.display = 'none';
+                    }
+                    else {
+                        for(i=0; i<MAX_YEELIGHT; i++) {
+                            reference = "yeelight_"  + String(i+1);
+                            document.getElementById(reference).style.display = 'block';
+                            updateSwitch(reference, jsn[reference].name, jsn[reference].status);
+                            var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
+                            var map = {};
+                            map['docId'] = reference;
+                            map['docType'] = 'yeelight_';
+                            map['name'] = jsn[reference].name;
+                            map['host'] = jsn[reference].host;
+                            map['localId'] = jsn[reference].localId;
+                            map['lastUpdate'] = nowTime;
+                            map['timestamp'] = nowLong;
+                            pushMap[pushKey] = reference;
+                            window.localStorage.setItem(reference, JSON.stringify(map));
+                        }
+                    }
+                    MAX_SONOFF = jsn.sonoffCount;
+                    if(MAX_SONOFF == 0) {
+                        document.getElementById("sonoff").style.display = 'none';
+                        document.getElementById("txt_42").style.display = 'none';
+                    }
+                    else {
+                        for(i=0; i<MAX_SONOFF; i++) {
+                            reference = "sonoff_"  + String(i+1);
+                            document.getElementById(reference).style.display = 'block';
+                            updateSwitch(reference, jsn[reference].name, jsn[reference].status);
+                            var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
+                            var map = {};
+                            map['docId'] = reference;
+                            map['docType'] = 'sonoff_';
+                            map['name'] = jsn[reference].name;
+                            map['host'] = jsn[reference].host;
+                            map['localId'] = jsn[reference].localId;
+                            map['lastUpdate'] = nowTime;
+                            map['timestamp'] = nowLong;
+                            pushMap[pushKey] = reference;
+                            window.localStorage.setItem(reference, JSON.stringify(map));
                         }
                     }
 
@@ -504,8 +587,6 @@ function requestConfig() {
                                   jsn[reference].min, jsn[reference].max, jsn[reference].inverse);
                             document.getElementById(reference + "_meter").min = jsn[reference].min;
                             document.getElementById(reference + "_meter").max = jsn[reference].max;
-                            hostMap[reference] = jsn[reference].host
-                            localIdMap[reference] = jsn[reference].localId;
                             var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
                             var map = {};
                             map['docId'] = reference;
@@ -514,7 +595,12 @@ function requestConfig() {
                             map['min'] = jsn[reference].min;
                             map['max'] = jsn[reference].max;
                             map['inverse'] = jsn[reference].inverse;
-                            pushMap[pushKey] = map;
+                            map['host'] = jsn[reference].host;
+                            map['localId'] = jsn[reference].localId;
+                            map['lastUpdate'] = nowTime;
+                            map['timestamp'] = nowLong;
+                            pushMap[pushKey] = reference;
+                            window.localStorage.setItem(reference, JSON.stringify(map));
                         }
                     }
                     MAX_TEMPERATURE = jsn.temperatureCount;
@@ -529,14 +615,17 @@ function requestConfig() {
                             update18B20(reference, jsn[reference].name, jsn[reference].value);
                             document.getElementById(reference + "_meter").min = jsn[reference].min;
                             document.getElementById(reference + "_meter").max = jsn[reference].max;
-                            hostMap[reference] = jsn[reference].host;
-                            localIdMap[reference] = jsn[reference].localId;
                             var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
                             var map = {}
                             map['docId'] = reference;
-                            map['docType'] = 'T';
+                            map['docType'] = 'temperature_';
                             map['name'] = jsn[reference].name;
-                            pushMap[pushKey] = map;
+                            map['host'] = jsn[reference].host;
+                            map['localId'] = jsn[reference].localId;
+                            map['lastUpdate'] = nowTime;
+                            map['timestamp'] = nowLong;
+                            pushMap[pushKey] = reference;
+                            window.localStorage.setItem(reference, JSON.stringify(map));
                         }
                     }
                     MAX_HMS100T = jsn.hms100tCount;
@@ -552,14 +641,17 @@ function requestConfig() {
                             var fltValue=parseFloat(jsn[reference].value);
                             document.getElementById(reference + "_label").innerHTML=jsn[reference].name + ": " +
                                     fltValue.toFixed(1) + " C";
-                            hostMap[reference] = jsn[reference].host;
-                            localIdMap[reference] = jsn[reference].localId;
                             var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
                             var map = {}
                             map['docId'] = reference;
-                            map['docType'] = '100T';
+                            map['docType'] = 'hms100t_';
                             map['name'] = jsn[reference].name;
-                            pushMap[pushKey] = map;
+                            map['host'] = jsn[reference].host;
+                            map['localId'] = jsn[reference].localId;
+                            map['lastUpdate'] = nowTime;
+                            map['timestamp'] = nowLong;
+                            pushMap[pushKey] = reference;
+                            window.localStorage.setItem(reference, JSON.stringify(map));
                         }
                      }
                     MAX_HMS100TF = jsn.hms100tfCount;
@@ -573,14 +665,17 @@ function requestConfig() {
                             document.getElementById(reference).style.display = 'block';
                             document.getElementById(reference + "_label").innerHTML=jsn[reference].name + ": " +
                                     jsn[reference].value;
-                            hostMap[reference] = jsn[reference].host;
-                            localIdMap[reference] = jsn[reference].localId;
                             var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
                             var map = {}
                             map['docId'] = reference;
-                            map['docType'] = '100TF';
+                            map['docType'] = 'hms100tf_';
                             map['name'] = jsn[reference].name;
-                            pushMap[pushKey] = map;
+                            map['host'] = jsn[reference].host;
+                            map['localId'] = jsn[reference].localId;
+                            map['lastUpdate'] = nowTime;
+                            map['timestamp'] = nowLong;
+                            pushMap[pushKey] = reference;
+                            window.localStorage.setItem(reference, JSON.stringify(map));
                         }
                     }
                     MAX_KSH300 = jsn.ksh300Count;
@@ -594,14 +689,17 @@ function requestConfig() {
                             document.getElementById(reference).style.display = 'block';
                             document.getElementById(reference + "_label").innerHTML=jsn[reference].name + ": " +
                                     jsn[reference].value;
-                            hostMap[reference] = jsn[reference].host;
-                            localIdMap[reference] = jsn[reference].localId;
                             var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
                             var map = {}
                             map['docId'] = reference;
                             map['docType'] = 'K';
                             map['name'] = jsn[reference].name;
-                            pushMap[pushKey] = map;
+                            map['host'] = jsn[reference].host;
+                            map['localId'] = jsn[reference].localId;
+                            map['lastUpdate'] = nowTime;
+                            map['timestamp'] = nowLong;
+                            pushMap[pushKey] = reference;
+                            window.localStorage.setItem(reference, JSON.stringify(map));
                         }
                     }
                     MAX_FS20SENSOR = jsn.fs20SensorCount;
@@ -615,14 +713,17 @@ function requestConfig() {
                             document.getElementById(reference).style.display = 'block';
                             document.getElementById(reference + "_label").innerHTML = jsn[reference].name
                             document.getElementById(reference + "_value").innerHTML = jsn[reference].value
-                            hostMap[reference] = jsn[reference].host;
-                            localIdMap[reference] = jsn[reference].localId;
                             var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
                             var map = {}
                             map['docId'] = reference;
                             map['docType'] = 'FS';
                             map['name'] = jsn[reference].name;
-                            pushMap[pushKey] = map;
+                            map['host'] = jsn[reference].host;
+                            map['localId'] = jsn[reference].localId;
+                            map['lastUpdate'] = nowTime;
+                            map['timestamp'] = nowLong;
+                            pushMap[pushKey] = reference;
+                            window.localStorage.setItem(reference, JSON.stringify(map));
                         }
                     }
                     MAX_KERUI = jsn.keruiCount;
@@ -636,14 +737,17 @@ function requestConfig() {
                             document.getElementById(reference).style.display = 'block';
                             document.getElementById(reference + "_label").innerHTML = jsn[reference].name
                             document.getElementById(reference + "_value").innerHTML = jsn[reference].value
-                            hostMap[reference] = jsn[reference].host;
-                            localIdMap[reference] = jsn[reference].localId;
                             var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
                             var map = {}
                             map['docId'] = reference;
-                            map['docType'] = 'KR';
+                            map['docType'] = 'kerui_';
                             map['name'] = jsn[reference].name;
-                            pushMap[pushKey] = map;
+                            map['host'] = jsn[reference].host;
+                            map['localId'] = jsn[reference].localId;
+                            map['lastUpdate'] = nowTime;
+                            map['timestamp'] = nowLong;
+                            pushMap[pushKey] = reference;
+                            window.localStorage.setItem(reference, JSON.stringify(map));
                         }
                     }
                     MAX_CAMERA = jsn.cameraCount;
@@ -658,7 +762,8 @@ function requestConfig() {
                             var parent = document.getElementById("camera_container");
                             parent.innerHTML += html.replace(/camera_ID/g, reference);
                             document.getElementById(reference).style.display = 'block';
-                            document.getElementById(reference + "_label").innerHTML = jsn[reference].name
+                            document.getElementById(reference + "_label").innerHTML = jsn[reference].name;
+                            var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
                             var map = {}
                             if(!jsn[reference].canStream) {
                                 document.getElementById(reference + "_live").style.display = 'none';
@@ -672,13 +777,13 @@ function requestConfig() {
                             }
                             map['host'] = jsn[reference].host;
                             map['localId'] = jsn[reference].localId;
-                            hostMap[reference] = map;
-                            var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
-                            map = {};
                             map['docId'] = reference;
                             map['docType'] = 'C';
                             map['name'] = jsn[reference].name;
-                            pushMap[pushKey] = map;
+                            map['lastUpdate'] = nowTime;
+                            map['timestamp'] = nowLong;
+                            pushMap[pushKey] = reference;
+                            window.localStorage.setItem(reference, JSON.stringify(map));
                          }
                     }
                     MAX_RPICAM = jsn.rpicamCount;
@@ -695,6 +800,7 @@ function requestConfig() {
                             document.getElementById(reference).style.display = 'block';
                             document.getElementById(reference + "_label").innerHTML = jsn[reference].name
                             var map = {}
+                            var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
                             if(!jsn[reference].canStream) {
                                 document.getElementById(reference + "_live").style.display = 'none';
                             }
@@ -705,15 +811,15 @@ function requestConfig() {
                                 map['timelapseMP4'] = jsn[reference].timelapseMP4;
                                 map['timelapseCodec'] = jsn[reference].timelapseCodec;
                             }
-                            map['host'] = jsn[reference].host;
-                            map['localId'] = jsn[reference].localId;
-                            hostMap[reference] = map;
-                            var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
-                            map = {};
                             map['docId'] = reference;
                             map['docType'] = 'C';
                             map['name'] = jsn[reference].name;
-                            pushMap[pushKey] = map;
+                            map['host'] = jsn[reference].host;
+                            map['localId'] = jsn[reference].localId;
+                            map['lastUpdate'] = nowTime;
+                            map['timestamp'] = nowLong;
+                            pushMap[pushKey] = reference;
+                            window.localStorage.setItem(reference, JSON.stringify(map));
                          }
                     }
                     MAX_BMP180 = jsn.bmp180Count;
@@ -728,14 +834,18 @@ function requestConfig() {
                                 document.getElementById(reference).style.display = 'block';
                                 document.getElementById(reference + "_label").innerHTML=jsn[reference].name + ": " +
                                         jsn[reference].value;
-                                hostMap[reference] = jsn[reference].host;
-                                localIdMap[reference] = jsn[reference].localId;
                                 var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
                                 var map = {}
                                 map['docId'] = reference;
-                                map['docType'] = 'BMP180';
+                                map['docType'] = 'bmp180_';
                                 map['name'] = jsn[reference].name;
-                                pushMap[pushKey] = map;
+                                map['value'] = jsn[reference].value;
+                                map['host'] = jsn[reference].host;
+                                map['localId'] = jsn[reference].localId;
+                                map['lastUpdate'] = nowTime;
+                                map['timestamp'] = nowLong;
+                                pushMap[pushKey] = reference;
+                                window.localStorage.setItem(reference, JSON.stringify(map));
                             }
                         }
                     }
@@ -749,14 +859,17 @@ function requestConfig() {
                             reference = "awning_" + String(i+1);
                             document.getElementById(reference).style.display = 'block';
                             document.getElementById(reference + "_label").innerHTML=jsn[reference].name;
-                            hostMap[reference] = jsn[reference].host;
-                            localIdMap[reference] = jsn[reference].localId;
                             var pushKey = jsn[reference].serverId + '_' + jsn[reference].localId;
                             var map = {}
                             map['docId'] = reference;
-                            map['docType'] = 'AWNING';
+                            map['docType'] = 'awning_';
                             map['name'] = jsn[reference].name;
-                            pushMap[pushKey] = map;
+                            map['host'] = jsn[reference].host;
+                            map['localId'] = jsn[reference].localId;
+                            map['lastUpdate'] = nowTime;
+                            map['timestamp'] = nowLong;
+                            pushMap[pushKey] = reference;
+                            window.localStorage.setItem(reference, JSON.stringify(map));
                         }
                     }
                 }
@@ -819,6 +932,33 @@ function handleRefresh() {
                             document.getElementById(reference + "_check").checked = false;
                         }
                     }
+                    for(i=0; i<MAX_ZIGBEE; i++) {
+                        reference = "zigbee_"  + String(i+1);
+                        if(jsn[reference].status === "on") {
+                            document.getElementById(reference + "_check").checked = true;
+                        }
+                        else {
+                            document.getElementById(reference + "_check").checked = false;
+                        }
+                    }
+                    for(i=0; i<MAX_YEELIGHT; i++) {
+                        reference = "yeelight_"  + String(i+1);
+                        if(jsn[reference].status === "on") {
+                            document.getElementById(reference + "_check").checked = true;
+                        }
+                        else {
+                            document.getElementById(reference + "_check").checked = false;
+                        }
+                    }
+                    for(i=0; i<MAX_SONOFF; i++) {
+                        reference = "sonoff_"  + String(i+1);
+                        if(jsn[reference].status === "on") {
+                            document.getElementById(reference + "_check").checked = true;
+                        }
+                        else {
+                            document.getElementById(reference + "_check").checked = false;
+                        }
+                    }
                     for(i=0; i<MAX_ULTRASONIC; i++) {
                         reference = "ultrasonic_"  + String(i+1);
                         if(i<jsn.ultrasonicCount) {
@@ -838,7 +978,6 @@ function handleRefresh() {
                         document.getElementById(reference + "_label").innerHTML=jsn[reference].name + ": " +
                                     jsn[reference].value;
                     }
-
                 }
             }
         }
@@ -848,9 +987,11 @@ function handleRefresh() {
 function requestHistory(sensorId) {
     currentChart = sensorId + "_chart";
     var host = "";
-    if(hostMap.hasOwnProperty(sensorId)) {
-        host = hostMap[sensorId];
-        sensorId = localIdMap[sensorId];
+    let item = window.localStorage.getItem(sensorId);
+    if(sensorId!=null) {
+        let map = JSON.parse(item);
+        host = map['host']
+        sensorId = map['localId'];
     };
     const params = { command : "history24", id : sensorId, host : host };
     //console.log(params);
@@ -1042,6 +1183,10 @@ function setupFCM(publicKey, senderId) {
             payload.data = JSON.parse(atob(payload.data.envelope));
         }
         console.log('Message received. ', payload);
+        delta = {};
+        let now = new Date();
+        delta['time'] = now.toLocaleString();
+        delta['timestamp'] = now.getTime();
         var jsn = JSON.parse(JSON.stringify(payload));
         var msgType = jsn.data.msgType;
         if(msgType === 'evtAction') {
@@ -1061,7 +1206,7 @@ function setupFCM(publicKey, senderId) {
             })
             .then(function (data) {
                     console.log('Request succeeded with JSON response', data);
-                    addToHistory("action", (new Date()).toLocaleString(), "N/A", "Proxied switch request");
+                    addToHistory("action", (new Date()).toLocaleString(), "N/A", "Proxied switch request", delta);
             })
             .catch(function (error) {
                 console.log('Request failed', error);
@@ -1083,7 +1228,7 @@ function setupFCM(publicKey, senderId) {
             });
             document.getElementById('lastUpdateTime').innerHTML = '[' + serverId + '] ' + new Date().toLocaleString();
             addToHistory(msgType === 'regUpdate' ? "regular" : "event", new Date().toLocaleString(),
-                            serverId, String(sensCount) + " Sensors and " + String(actCount) + " Actors updated");
+                            serverId, String(sensCount) + " Sensors and " + String(actCount) + " Actors updated", delta);
             if(jsn.data.hasOwnProperty('accessToken')) {
                 window.localStorage.setItem('accessToken', jsn.data.accessToken);
             }
@@ -1193,18 +1338,47 @@ function formatParams( params ){
 function updateEntity(serverId, entityId, value) {
     var fullKey = serverId + '_' + entityId;
     if(pushMap.hasOwnProperty(fullKey)) {
-        map = pushMap[fullKey];
+        map = JSON.parse(window.localStorage.getItem(pushMap[fullKey]));
         docId = map['docId'];
         docType = map['docType'];
         name = map['name'];
-        if(docType === 'T') {
+        let handled = false;
+        if(docType === 'temperature_' || docType === 'hms100t_')  {
             update18B20(docId, name, value);
+            if (value != map['value']) {
+                delta[docId] = map['name'] + ": " + map['value'] + ' -> ' + value;
+                map['value'] = value;
+                map['lastUpdate'] = delta['time'];
+                map['timestamp'] = delta['timestamp'];
+                window.localStorage.setItem(docId, JSON.stringify(map));
+            }
+            handled = true;
         }
         if(docType === 'U') {
             updateUltrasonic(docId, name, value, map['min'], map['max'], map['inverse']);
+            if (value != map['value']) {
+                delta[docId] = map['name'] + ": " + map['value'] + ' -> ' + value;
+                map['value'] = value;
+                map['lastUpdate'] = delta['time'];
+                map['timestamp'] = delta['timestamp'];
+                window.localStorage.setItem(docId, JSON.stringify(map));
+            }
+            handled = true;
         }
-        if((docType === 'S') || (docType === 'F') || (docType === 'N')) {
+        if((docType === 'S') || (docType === 'F') || (docType === 'N') || docType === 'zigbee_' ||
+                docType === 'yeelight_' || docType === 'sonoff_') {
             updateSwitch(docId, name, value);
+            if (map['status'] != value) {
+                delta[docId] = map['name'] + ": " + map['status'] + ' -> ' + value;
+                map['status'] = value;
+                map['lastUpdate'] = delta['time'];
+                map['timestamp'] = delta['timestamp'];
+                window.localStorage.setItem(docId, JSON.stringify(map));
+            }
+            handled  = true;
+        }
+        if (!handled) {
+            console.log("unhandled update: " + entityId);
         }
     }
 }
@@ -1217,7 +1391,7 @@ function update18B20(docId, name, value) {
                                     fltValue.toFixed(1) + " C";
     document.getElementById(docId + "_meter").value = fltValue;
     var after = document.getElementById(docId + "_label").innerHTML;
-    console.log(before + " -> " + after);
+    //console.log(before + " -> " + after);
 }
 
 function updateUltrasonic(docId, name, value, min, max, inverse) {
@@ -1249,6 +1423,10 @@ function handleVisibilityChange() {
         //console.log("Going into background");
     } else {
         console.log("Going into foreground, going to fetch background updates");
+        delta = {};
+        let now = new Date()
+        delta['time'] = now.toLocaleString();
+        delta['timestamp'] = now.getTime();
         var http = new XMLHttpRequest();
         http.open('GET', 'localcache?get=regUpdate', true);
         http.send();
@@ -1335,9 +1513,11 @@ function showSnapshot(camId) {
     hideVideo(camId);
      var host = "";
      var localId = camId;
-     if(hostMap.hasOwnProperty(camId)) {
-        host = hostMap[camId]['host'];
-        localId = hostMap[camId]['localId'];
+     let item = window.localStorage.getItem(camId)
+     if(item!=null) {
+        let map = JSON.parse(item);
+        host = map['host'];
+        localId = map['localId'];
      }
 
     const params = { command : "snapshot", id : localId, host : host };
@@ -1376,9 +1556,11 @@ myMediaSource = new MediaSource();
 function showTimeLapse(camId) {
     hideSnapshot(camId);
     document.getElementById(camId + "_video").style.display = 'block';
+    let item = window.localStorage.getItem(camId);
+    let map = JSON.parse(item);
     const videoTag = document.getElementById("camera_1_videosource");
-    const codec = hostMap[camId]['timelapseCodec'];
-    const mp4Source = hostMap[camId]['timelapseMP4'];
+    const codec = map['timelapseCodec'];
+    const mp4Source = map['timelapseMP4'];
     playMP4(camId, mp4Source, codec);
 }
 
@@ -1538,7 +1720,7 @@ function fetchArrayBuffer(url, callback) {
   xhr.send();
 }
 
-function addToHistory(evtType, lastUpdate, lastServerId, updateTimes) {
+function addToHistory(evtType, lastUpdate, lastServerId, updateTimes, delta) {
     var historyTable = document.getElementById('history');
     var historyIndex = window.localStorage.getItem('historyIndex');
     if(historyRowCount == 0) {
@@ -1550,8 +1732,7 @@ function addToHistory(evtType, lastUpdate, lastServerId, updateTimes) {
         var key = res[0].substring(6, res[0].length-1);
         window.localStorage.removeItem(key);
         historyTable.deleteRow(10);
-        historyIndex = historyIndex.replace(new RegExp(key, "g"), "");
-        historyIndex = historyIndex.replace(/::/g, "");
+        historyIndex = historyIndex.replace(new RegExp(':' + key, "g"), "");
         historyRowCount -= 1;
     }
     now = (new Date()).getTime();
@@ -1580,16 +1761,28 @@ function addToHistory(evtType, lastUpdate, lastServerId, updateTimes) {
 function restoreHistory() {
     var historyIndex = window.localStorage.getItem('historyIndex');
     if(historyIndex) {
+        var modified = false;
         var historyTable = document.getElementById('history');
         historyTable.style.display = 'block';
         var idxs = historyIndex.split(':');
         idxs.sort()
         //idxs.reverse();
         idxs.forEach(ts => {
-          var row = historyTable.insertRow(1);
-          row.innerHTML = window.localStorage.getItem(ts);
-          historyRowCount += 1;
+          var tmp = window.localStorage.getItem(ts);
+          if (tmp!=null) {
+            var row = historyTable.insertRow(1);
+            row.innerHTML = tmp;
+            historyRowCount += 1;
+          }
+          else {
+            console.log('removing ' + ts + ' from historyIndex');
+            historyIndex = historyIndex.replace(new RegExp(":" + ts, "g"), "");
+            modified = true;
+          }
         });
+        if(modified) {
+            window.localStorage.setItem('historyIndex', historyIndex);
+        }
     }
 }
 
@@ -1597,9 +1790,11 @@ function awningCmd(id, cmd) {
     if(!updateInProgress) {
         var localId=id
         var host = "";
-        if(hostMap.hasOwnProperty(id)) {
-            host = hostMap[id];
-            localId = localIdMap[id];
+        let item = window.localStorage.getItem(id);
+        if(item != null) {
+            let map = JSON.parse(item);
+            host = map['host'];
+            localId = map['localId'];
         }
         let timeStamp = window.performance.now().toString();
         let clientId = window.localStorage.getItem('clientId');

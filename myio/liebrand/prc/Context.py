@@ -10,7 +10,7 @@ from os.path import join, exists, dirname, isdir
 from os import access, W_OK, R_OK
 
 from myio.liebrand.prc.Entity import Switch, FS20, UltraSonic, Sensor18B20, Netio230, HMS100T, HMS100TF, KSH300, \
-    FS20Sensor, Peer, Camera, RpiCam, BMP180, Awning, ChromeCast, Kerui, Zigbee
+    FS20Sensor, Peer, Camera, RpiCam, BMP180, Awning, ChromeCast, Kerui, Zigbee, Yeelight, Sonoff
 from myio.liebrand.prc.Sens18B20 import Sens18B20Wrapper
 from myio.liebrand.prc.SensorDataHandler import SensorDataHandler
 from myio.liebrand.prc.config import Config
@@ -22,6 +22,8 @@ from myio.liebrand.prc.local.BMP180 import BMP180Wrapper
 from myio.liebrand.prc.local.Camera import CamModule
 from myio.liebrand.prc.remote.Camera import IPCamera
 from myio.liebrand.prc.remote.Netio230 import Netio230Wrapper
+from myio.liebrand.prc.remote.Sonoff import SonoffWrapper
+from myio.liebrand.prc.remote.Yeelight import YeelightWrapper
 from myio.liebrand.prc.ultrasonic import UltraSonicWrapper
 from myio.liebrand.prc.PushNotify import PushNotification
 
@@ -64,6 +66,8 @@ class Context:
         self.chromeCast = {}
         self.kerui = {}
         self.zigbee = {}
+        self.yeelight = {}
+        self.sonoff = {}
         self.fcm = PushNotification(self)
         self.api = None
         self.setupDevices()
@@ -185,6 +189,8 @@ class Context:
         chromeCastCount = self.cfg.general_chromeCastCount
         keruiCount = self.cfg.general_keruiCount
         zigbeeCount = self.cfg.general_zigbeeCount
+        yeelightCount = self.cfg.general_yeelightCount
+        sonoffCount = self.cfg.general_sonoffCount
 
         self.cfg.setSection(Config.SECTIONS[Config.GENERAL])
 
@@ -294,6 +300,43 @@ class Context:
                 o = Zigbee(index+1, self.cfg)
                 o.ctx = self
                 self.zigbee[o.entityId] = o
+
+        if yeelightCount > 0:
+            yeelightWrapper = YeelightWrapper()
+            bulbs = yeelightWrapper.discover()
+            for index in range(yeelightCount):
+                o = Yeelight(index+1, self.cfg)
+                o.ctx = self
+                o.wrapper = yeelightWrapper
+                self.yeelight[o.entityId] = o
+                found = False
+                for b in bulbs:
+                    if b['ip'] == o.address:
+                        self.log.warn("[CTX] Yeelight device %s: replace ip %s with id %s to avoid problems with changing ips (dhcp)" % (o.entityId, o.address, b['capabilities']['id']))
+                        found = True
+                    elif b['capabilities']['id'] == o.address:
+                        o.address = b['ip']
+                        found = True
+                if not found:
+                    self.log.info('[CTX] Device %s with id/ip %s is offline' % (o.entityId, o.address))
+            for b in bulbs:
+                found = False
+                for y in self.yeelight.keys():
+                    o = self.yeelight[y]
+                    if o.address == b['ip'] or o.address == b['capabilities']['id']:
+                        found = True
+                        break
+                if not found:
+                    self.log.info('[CTX] Discovered new device ip %s, id %s' % (b['ip'], b['capabilities']['id']))
+
+        if sonoffCount>0:
+            for index in range(sonoffCount):
+                s = SonoffWrapper()
+                o = Sonoff(index+1, self.cfg)
+                o.ctx = self
+                o.init(s)
+                self.sonoff[o.entityId] = o
+
 
 
     def readShellCmds(self):

@@ -143,7 +143,10 @@ class Cuno(threading.Thread):
                         for x in xx.split('\n'):
                             if len(x) != 0:
                                 x = x.rstrip('\n').rstrip('\r')
-                                self.parse(x)
+                                try:
+                                    self.parse(x)
+                                except IndexError:
+                                    pass
                                 #if resp is not None:
                                 #    tn.write(resp)
                 elif self.controlPipe[0] in ready[0]:

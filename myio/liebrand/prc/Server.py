@@ -44,6 +44,8 @@ if __name__ == '__main__':
             'awningCount': ["Integer", 0],
             'chromeCastCount': ['Integer', 0],
             'keruiCount': ['Integer', 0],
+            'yeelightCount': ['Integer', 0],
+            'sonoffCount': ['Integer', 0],
             'zigbeeCount': ['Integer', 0],
             'address' : ["String", ],
             'addressNoSSL': ["String", ],

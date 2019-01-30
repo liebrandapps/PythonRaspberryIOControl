@@ -19,7 +19,7 @@ import uuid
 from requests import ConnectionError
 
 from myio.liebrand.phd.handler import Handler
-from myio.liebrand.prc import Poller
+from myio.liebrand.prc import Poller, SQLProcessor
 from myio.liebrand.prc.Entity import Entity, FS20, UltraSonic, Sensor18B20, Switch, HMS100T, Netio230, HMS100TF, KSH300, \
     FS20Sensor, Camera, RpiCam, BMP180, Awning
 from myio.liebrand.prc.FieldNames import FN
@@ -45,7 +45,7 @@ class PRCApiHandler(Handler):
         self.peer = ctx.peer
         self.dcts = [ctx.switch, ctx.fs20, ctx.ultrasonic, ctx.sensor18B20, ctx.netio230, ctx.hms100t,
             ctx.hms100tf, ctx.ksh300, ctx.fs20Sensor, ctx.camera, ctx.rpiCam, ctx.bmp180, ctx.awning,
-                     ctx.kerui, ctx.zigbee]
+                     ctx.kerui, ctx.zigbee, ctx.yeelight, ctx.sonoff]
         self.switch = ctx.switch
         self.fs20 = ctx.fs20
         self.us = ctx.ultrasonic
@@ -61,6 +61,8 @@ class PRCApiHandler(Handler):
         self.awning = ctx.awning
         self.kerui = ctx.kerui
         self.zigbee = ctx.zigbee
+        self.yeelight = ctx.yeelight
+        self.sonoff = ctx.sonoff
         self.cfg.setSection(Config.SECTIONS[Config.WEB])
         self.headline = self.cfg.headline
 
@@ -208,6 +210,10 @@ class PRCApiHandler(Handler):
                     data[FN.FLD_MAX] = rg[1]
                 elif key.startswith('netio'):
                     data[FN.FLD_STATUS] = instance.status()[1]
+                elif key.startswith('yeelight'):
+                    data[FN.FLD_STATUS] = instance.status()
+                elif key.startswith('sonoff'):
+                    data[FN.FLD_STATUS] = instance.status()
                 elif key.startswith('hms100t') or key.startswith('ksh300') or key.startswith('fs20Sensor') \
                     or key.startswith('kerui') or key.startswith('zigbee'):
                     data[FN.FLD_VALUE] = self.queryCachedPushSensorValue(key)
@@ -233,7 +239,8 @@ class PRCApiHandler(Handler):
         #
         idxs = [len(self.switch), len(self.fs20), len(self.us), len(self.temp), len(self.netio230),
                 len(self.hms100t), len(self.hms100tf), len(self.ksh300), len(self.fs20Sensor), len(self.camera),
-                len(self.rpiCam), len(self.bmp180), len(self.awning), len(self.kerui), len(self.zigbee)]
+                len(self.rpiCam), len(self.bmp180), len(self.awning), len(self.kerui), len(self.zigbee),
+                len(self.yeelight), len(self.sonoff)]
         if roaming:
             for key in self.peer.keys():
                 p = self.peer[key]
@@ -250,7 +257,8 @@ class PRCApiHandler(Handler):
         counters = [FN.FLD_SWITCHCOUNT, FN.FLD_FS20COUNT, FN.FLD_ULTRASONICCOUNT, FN.FLD_TEMPERATURECOUNT,
                     FN.FLD_NETIOCOUNT, FN.FLD_HMS100TCOUNT, FN.FLD_HMS100TFCOUNT, FN.FLD_KSH300COUNT,
                     FN.FLD_FS20SENSORCOUNT, FN.FLD_CAMERACOUNT, FN.FLD_RPICAMCOUNT, FN.FLD_BMP180COUNT,
-                    FN.FLD_AWNING_COUNT, FN.FLD_KERUICOUNT, FN.FLD_ZIGBEECOUNT]
+                    FN.FLD_AWNING_COUNT, FN.FLD_KERUICOUNT, FN.FLD_ZIGBEECOUNT, FN.FLD_YEELIGHTCOUNT,
+                    FN.FLD_SONOFFCOUNT]
         for c, i in zip(counters, idxs):
             dct[c] = i
         dct[FN.FLD_PEERCOUNT] = len(self.peer)
@@ -295,11 +303,12 @@ class PRCApiHandler(Handler):
         idxs = [len(self.switch), len(self.fs20), len(self.us), len(self.temp), len(self.netio230),
                 len(self.hms100t), len(self.hms100tf), len(self.ksh300), len(self.fs20Sensor),
                 len(self.camera), len(self.rpiCam), len(self.bmp180), len(self.awning),
-                len(self.kerui), len(self.zigbee)]
+                len(self.kerui), len(self.zigbee), len(self.yeelight), len(self.sonoff)]
         counters = [FN.FLD_SWITCHCOUNT, FN.FLD_FS20COUNT, FN.FLD_ULTRASONICCOUNT, FN.FLD_TEMPERATURECOUNT,
                     FN.FLD_NETIOCOUNT, FN.FLD_HMS100TCOUNT, FN.FLD_HMS100TFCOUNT, FN.FLD_KSH300COUNT,
                     FN.FLD_FS20SENSORCOUNT, FN.FLD_CAMERACOUNT, FN.FLD_RPICAMCOUNT, FN.FLD_BMP180COUNT,
-                    FN.FLD_AWNING_COUNT, FN.FLD_KERUICOUNT, FN.FLD_ZIGBEECOUNT]
+                    FN.FLD_AWNING_COUNT, FN.FLD_KERUICOUNT, FN.FLD_ZIGBEECOUNT, FN.FLD_YEELIGHTCOUNT,
+                    FN.FLD_SONOFFCOUNT]
         for c, i in zip(counters, idxs):
             dct[c] = i
         dct[FN.FLD_PEERCOUNT] = len(self.peer)
@@ -338,6 +347,12 @@ class PRCApiHandler(Handler):
                 elif key.startswith('netio'):
                     value = instance.status()[1]
                     data[FN.FLD_STATUS] = value
+                elif key.startswith('yeelight'):
+                    value = instance.status()
+                    data[FN.FLD_STATUS] = value
+                elif key.startswith('sonoff'):
+                    value = instance.status()
+                    data[FN.FLD_STATUS] = value
                 elif key.startswith('ultrasonic'):
                     value = instance.wrapper.measure()
                     data[FN.FLD_VALUE] = value
@@ -358,7 +373,8 @@ class PRCApiHandler(Handler):
         #
         idxs = [len(self.switch), len(self.fs20), len(self.us), len(self.temp), len(self.netio230),
                 len(self.hms100t), len(self.hms100tf), len(self.fs20Sensor), len(self.camera),
-                len(self.rpiCam), len(self.bmp180), len(self.awning), len(self.kerui), len(self.zigbee)]
+                len(self.rpiCam), len(self.bmp180), len(self.awning), len(self.kerui), len(self.zigbee),
+                len(self.yeelight), len(self.sonoff)]
         if roaming:
             for key in self.peer.keys():
                 p = self.peer[key]
@@ -375,7 +391,8 @@ class PRCApiHandler(Handler):
         counters = [FN.FLD_SWITCHCOUNT, FN.FLD_FS20COUNT, FN.FLD_ULTRASONICCOUNT, FN.FLD_TEMPERATURECOUNT,
                     FN.FLD_NETIOCOUNT, FN.FLD_HMS100TCOUNT, FN.FLD_HMS100TFCOUNT, FN.FLD_KSH300COUNT,
                     FN.FLD_FS20SENSORCOUNT, FN.FLD_CAMERACOUNT, FN.FLD_RPICAMCOUNT, FN.FLD_BMP180COUNT,
-                    FN.FLD_AWNING_COUNT, FN.FLD_KERUICOUNT, FN.FLD_ZIGBEECOUNT]
+                    FN.FLD_AWNING_COUNT, FN.FLD_KERUICOUNT, FN.FLD_ZIGBEECOUNT, FN.FLD_YEELIGHTCOUNT,
+                    FN.FLD_SONOFFCOUNT]
         for c, i in zip(counters, idxs):
             dct[c] = i
         dct[FN.FLD_LASTUPDATETIME] = time.time()
@@ -396,14 +413,16 @@ class PRCApiHandler(Handler):
                     swdct[FN.FLD_STATUS] = self.switch[key].status()
                 elif key.startswith("fs20"):
                     swdct[FN.FLD_STATUS] = self.fs20[key].status()
-                elif key.startswith("zigbee"):
-                    conn = self.ctx.openDatabase()
-                    cursor = conn.cursor()
-                    swdct[FN.FLD_STATUS] = self.queryCachedPushSensorValue(key)
-                    cursor.close()
-                    self.ctx.closeDatabase(conn)
-                else:
+                elif key.startswith("netio"):
                     swdct[FN.FLD_STATUS] = self.netio230[key].status()[1]
+                elif key.startswith("yeelight"):
+                    swdct[FN.FLD_STATUS] = self.yeelight[key].status()
+                elif key.startswith("sonoff"):
+                    swdct[FN.FLD_STATUS] = self.sonoff[key].status()
+                elif key.startswith("zigbee"):
+                    swdct[FN.FLD_STATUS] = self.queryCachedPushSensorValue(key)
+                else:
+                    swdct[FN.FLD_STATUS] = "not implemented"
                 dct[FN.FLD_STATUS] = FN.ok
                 dct[key] = swdct
             else:
@@ -438,6 +457,12 @@ class PRCApiHandler(Handler):
                     elif sw.startswith("zigbee"):
                         self.zigbee[sw].switch(fields[FN.FLD_VALUE])
                         result = [200, FN.ok]
+                    elif sw.startswith("yeelight"):
+                        self.yeelight[sw].switch(fields[FN.FLD_VALUE])
+                        result = [200, FN.ok]
+                    elif sw.startswith("sonoff"):
+                        self.sonoff[sw].switch(fields[FN.FLD_VALUE])
+                        result = [200, FN.ok]
                     else:
                         result = self.netio230[sw].switch(fields[FN.FLD_VALUE])
                     if FN.FLD_USER in fields:
@@ -450,11 +475,8 @@ class PRCApiHandler(Handler):
                     else:
                         now = datetime.datetime.now()
                         sql = "insert into actor(actorId, newValue, user, atTime, status) values (?, ?, ?, ?, ?)"
-                        c = self.dbAccess()
                         values = [sw, fields[FN.FLD_VALUE], user, now, result[1]]
-                        c[0].execute(sql, values)
-                        c[0].commit()
-                        self.dbAccess(c)
+                        self.ctx.sqlProcessor.addSQL([SQLProcessor.SQLProcessor.CMD_SQL, sql, values])
                         if not disableNotify:
                             messageDict={}
                             messageDict[sw] = {FN.FLD_VALUE: fields[FN.FLD_VALUE],
@@ -494,9 +516,8 @@ class PRCApiHandler(Handler):
                     disableNotify = False
                 switchId = fields[FN.FLD_ID]
                 if switchId.startswith("fs20"):
-                    address = self.fs20[switchId].getAddress()
                     useCuno = self.fs20[switchId].getUseCuno()
-                    result = self.fs20[switchId].wrapper.shine(address, useCuno)
+                    result = self.fs20[switchId].shine(useCuno)
                     if FN.FLD_USER in fields:
                         user = fields[FN.FLD_USER]
                     else:
@@ -508,14 +529,11 @@ class PRCApiHandler(Handler):
                         now = datetime.datetime.now()
                         sql = "insert into actor(actorId, newValue, user, atTime, status) values (?, ?, ?, ?, ?)"
                         values = [switchId, "off", user, now, result[1]]
-                        conn = self.ctx.openDatabase()
-                        conn.execute(sql, values)
-                        conn.commit()
-                        self.ctx.closeDatabase(conn)
+                        self.ctx.sqlProcessor.addSQL([SQLProcessor.SQLProcessor.CMD_SQL, sql, values])
                         if not disableNotify:
                             messageDict = {}
                             messageDict[switchId] = {FN.FLD_VALUE : "off",
-                                                     FN.FLD_TIMESTAMP : str(int(time.time() * 1000)),
+                                                     FN.FLD_TIMESTAMP : str(time.time() * 1000),
                                                      FN.FLD_CMD : FN.CMD_SHINE}
                             messageDict[FN.FLD_SERVERID] = self.serverId
                             messageDict[FN.FLD_MSGTYPE] = "evtUpdate"

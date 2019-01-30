@@ -73,7 +73,7 @@ class KeruiWrapper(threading.Thread):
                                     if code not in self.unknownAddresses or not self.filterDuplicates:
                                         self.log.info("[KERUI] Unknown device ID %s", code)
                                         self.unknownAddresses.append(code)
-                            if (now - lastCleanup).seconds > 86400:
+                            if (now - lastCleanup).days > 0:
                                 # reset unknown devices and lastHeardOf every 24 hours to prevent filling up memory
                                 # implication is that unknown devices appear basically once a day
                                 self.lastHeardOf = {}

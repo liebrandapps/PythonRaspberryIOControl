@@ -24,8 +24,8 @@ class Entity:
         cfgDict[self.entityId]['ignore'] = ["Array", None ]
         cfgDict[self.entityId]['googleActionVerbs'] = ["Array", None]
         cfgDict[self.entityId]['googleActionResponses'] = ["Array", None]
-        cfgDict[self.entityId]['mqttTopic'] = ["String", None]
-        cfgDict[self.entityId]['mqttPayload'] = ["String", None]
+        cfgDict[self.entityId]['mqttTopic'] = ["String", None, 'Topic to be used to publish via MQTT']
+        cfgDict[self.entityId]['mqttPayload'] = ["String", None, 'JSON type of string to be published as payload']
         cfg.addScope(cfgDict)
         self.shellCmd = getattr(cfg, '%s_shellCmd' % self.entityId)
         self.disableNotify = getattr(cfg, '%s_disableNotify' % self.entityId)
@@ -50,7 +50,7 @@ class Entity:
         else:
             print self.entityId
             print self.name
-            if len(self.name)>0:
+            if len(self.name) > 0:
                 return self.name.itervalues().next()
             else:
                 return("?")
@@ -66,7 +66,7 @@ class Peer(Entity):
         cfgDict = {
             "peer_%d" % index : {
                 'address': ["String", ],
-                'roamingAddress': ["String", None],
+                'roamingAddress': ["String", None, "Address (URL) or remote PRC instance"],
             }
         }
         Entity.__init__(self, cfgDict, cfg)
@@ -114,7 +114,7 @@ class FS20(Entity):
         cfgDict = {
             FS20.SECTION % index : {
                 'address': ["String", ],
-                'useCuno': ["Boolean", False]
+                'useCuno': ["Boolean", False, "If true, the configured CUNO device is used instead of the FS Sender"]
             }
         }
         Entity.__init__(self, cfgDict, cfg)
@@ -134,6 +134,9 @@ class FS20(Entity):
 
     def status(self):
         return self.wrapper.status(self.address)
+
+    def shine(self, useCuno=False):
+        return self.wrapper.shine(self.address, useCuno=useCuno)
 
 
 class UltraSonic(Entity):
@@ -458,3 +461,79 @@ class Zigbee(Entity):
     def turnOff(self):
         dct = { 'state' : 'OFF' }
         self.wrapper.publish(self.topic + self.suffix, json.dumps(dct))
+
+
+class Yeelight(Entity):
+
+    SECTION = "yeelight_%d"
+
+    def __init__(self, index, cfg):
+        cfgDict = {
+            Yeelight.SECTION % index: {
+                "address" : ["String", ]
+            }
+        }
+        Entity.__init__(self, cfgDict, cfg)
+        self.address = getattr(cfg, '%s_address' % self.entityId)
+        self.isOffline = False
+
+    def switch(self, value):
+        if value == 'on':
+            self.turnOn()
+        else:
+            self.turnOff()
+
+    def turnOn(self):
+        self.wrapper.turnOn(self.address)
+
+    def turnOff(self):
+        self.wrapper.turnOff(self.address)
+
+    def discover(self):
+        return self.wrapper.discover()
+
+    def status(self):
+        return self.wrapper.status(self.address)
+
+
+class Sonoff(Entity):
+
+    SECTION = "sonoff_%d"
+
+    def __init__(self, index, cfg):
+        cfgDict = {
+            Sonoff.SECTION % index: {
+                "address" : ["String", ],
+                "switch" : ["Integer", -1]
+            }
+        }
+        Entity.__init__(self, cfgDict, cfg)
+        self.address = getattr(cfg, '%s_address' % self.entityId)
+        self._switch = getattr(cfg, "%s_switch" % self.entityId)
+
+    def init(self, wrapper):
+        self.wrapper = wrapper
+        self.wrapper.initMsg(self.address)
+
+    def switch(self, value):
+        if value == 'on':
+            self.turnOn()
+        else:
+            self.turnOff()
+
+    def turnOn(self):
+        if (self._switch == -1):
+            self.wrapper.updateMsg(self.address, 'on')
+        else:
+            self.wrapper.updateMsg(self.address, 'on', [ self._switch, ])
+
+    def turnOff(self):
+        if (self._switch == -1):
+            self.wrapper.updateMsg(self.address, 'off')
+        else:
+            self.wrapper.updateMsg(self.address, 'off', [ self._switch, ])
+
+    def status(self):
+        self.wrapper.initMsg(self.address)
+        return self.wrapper.status[self._switch]
+
